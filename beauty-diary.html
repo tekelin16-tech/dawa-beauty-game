@@ -685,14 +685,13 @@ body {
         <button class="mode-btn" onclick="switchDiaryMode('free')">💭 心情隨寫</button>
       </div>
 
-      <!-- AI assist toggle -->
-      <div class="ai-assist-bar" id="aiAssistBar">
-        <label><input type="checkbox" id="aiAssistCheck" onchange="toggleAiAssist()"> 🤖 AI 幫我寫日記</label>
-        <button class="ai-fill-btn" id="aiFillBtn" onclick="aiFillDiary()">✨ 開始填寫</button>
-      </div>
-
       <!-- 333 mode -->
       <div id="diary333">
+        <!-- AI assist toggle -->
+        <div class="ai-assist-bar" id="aiAssistBar">
+          <label><input type="checkbox" id="aiAssistCheck" onchange="toggleAiAssist()"> 🤖 AI 幫我寫日記</label>
+          <button class="ai-fill-btn" id="aiFillBtn" onclick="aiFillDiary()">✨ 開始填寫</button>
+        </div>
         <div class="diary-section">
           <div class="diary-section-title grateful">🙏 3 個今天感恩的事</div>
           <div class="diary-input-row" id="row_grateful1">
