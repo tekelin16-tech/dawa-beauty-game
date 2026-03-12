@@ -224,6 +224,72 @@ body {
 .diary-input.grow-input { border-color: #90caf9; }
 .diary-input.grow-input:focus { border-color: #1565c0; }
 
+/* AI assist toggle */
+.ai-assist-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #e8f5e9, #e3f2fd);
+  border-radius: 10px;
+}
+.ai-assist-bar label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2e7d32;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.ai-assist-bar input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: #4caf50;
+}
+.ai-assist-bar .ai-fill-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: none;
+}
+.ai-assist-bar .ai-fill-btn.show { display: inline-block; }
+
+/* Row action buttons */
+.diary-input-row .row-actions {
+  display: none;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.diary-input-row.ai-filled .row-actions { display: flex; }
+.row-action-btn {
+  width: 28px; height: 28px;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.row-action-btn.refresh {
+  background: #fff3e0;
+  color: #e65100;
+}
+.row-action-btn.confirm {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.diary-input-row.confirmed .row-actions .confirm { background: #4caf50; color: #fff; }
+.diary-input-row.confirmed .diary-input { border-color: #4caf50; background: rgba(76,175,80,0.06); }
+
 /* Diary mode toggle */
 .diary-mode-toggle {
   display: flex;
@@ -587,53 +653,95 @@ body {
         <button class="mode-btn" onclick="switchDiaryMode('free')">💭 心情隨寫</button>
       </div>
 
+      <!-- AI assist toggle -->
+      <div class="ai-assist-bar" id="aiAssistBar">
+        <label><input type="checkbox" id="aiAssistCheck" onchange="toggleAiAssist()"> 🤖 AI 幫我寫日記</label>
+        <button class="ai-fill-btn" id="aiFillBtn" onclick="aiFillDiary()">✨ 開始填寫</button>
+      </div>
+
       <!-- 333 mode -->
       <div id="diary333">
         <div class="diary-section">
           <div class="diary-section-title grateful">🙏 3 個今天感恩的事</div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_grateful1">
             <span class="diary-num grateful">1</span>
             <input class="diary-input" id="grateful1" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('grateful',1)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('grateful',1)" title="確認">✓</button>
+            </span>
           </div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_grateful2">
             <span class="diary-num grateful">2</span>
             <input class="diary-input" id="grateful2" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('grateful',2)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('grateful',2)" title="確認">✓</button>
+            </span>
           </div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_grateful3">
             <span class="diary-num grateful">3</span>
             <input class="diary-input" id="grateful3" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('grateful',3)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('grateful',3)" title="確認">✓</button>
+            </span>
           </div>
         </div>
 
         <div class="diary-section">
           <div class="diary-section-title good">💪 3 個今天做得不錯的事</div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_good1">
             <span class="diary-num good">1</span>
             <input class="diary-input good-input" id="good1" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('good',1)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('good',1)" title="確認">✓</button>
+            </span>
           </div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_good2">
             <span class="diary-num good">2</span>
             <input class="diary-input good-input" id="good2" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('good',2)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('good',2)" title="確認">✓</button>
+            </span>
           </div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_good3">
             <span class="diary-num good">3</span>
             <input class="diary-input good-input" id="good3" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('good',3)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('good',3)" title="確認">✓</button>
+            </span>
           </div>
         </div>
 
         <div class="diary-section">
           <div class="diary-section-title grow">🌱 3 個生命可以更好的事</div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_grow1">
             <span class="diary-num grow">1</span>
             <input class="diary-input grow-input" id="grow1" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('grow',1)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('grow',1)" title="確認">✓</button>
+            </span>
           </div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_grow2">
             <span class="diary-num grow">2</span>
             <input class="diary-input grow-input" id="grow2" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('grow',2)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('grow',2)" title="確認">✓</button>
+            </span>
           </div>
-          <div class="diary-input-row">
+          <div class="diary-input-row" id="row_grow3">
             <span class="diary-num grow">3</span>
             <input class="diary-input grow-input" id="grow3" placeholder="">
+            <span class="row-actions">
+              <button class="row-action-btn refresh" onclick="aiRefreshOne('grow',3)" title="換一個">🔄</button>
+              <button class="row-action-btn confirm" onclick="confirmRow('grow',3)" title="確認">✓</button>
+            </span>
           </div>
         </div>
       </div>
@@ -1068,6 +1176,91 @@ function switchDiaryMode(mode) {
   });
   document.getElementById('diary333').style.display = mode === '333' ? '' : 'none';
   document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
+}
+
+// ── AI assist fill ──
+const aiSuggestions = {
+  grateful: [
+    '家人的陪伴讓我感到溫暖', '今天吃到了一頓好吃的飯', '天氣很好讓心情很舒服',
+    '朋友傳了關心的訊息給我', '身體健康是最大的幸福', '有一份穩定的工作',
+    '路上看到美麗的花朵', '能自由地做自己喜歡的事', '有一個溫暖的家可以回去',
+    '今天學到了新的東西', '有人對我友善地微笑', '能喝到一杯好咖啡',
+    '平安度過了這一天', '感恩還能呼吸和感受', '毛小孩在身邊陪伴我',
+    '有乾淨的水可以喝', '能好好地洗個熱水澡', '有一張舒服的床可以休息',
+    '感恩有網路可以連結世界', '今天看到了美麗的夕陽', '有人願意聽我說話',
+    '感恩自己願意繼續努力', '有音樂可以療癒心靈', '今天的空氣特別清新'
+  ],
+  good: [
+    '準時完成了今天的工作', '做了30分鐘的運動', '對自己說了鼓勵的話',
+    '早起沒有賴床', '認真吃了健康的一餐', '主動幫助了身邊的人',
+    '控制住情緒沒有發脾氣', '看了幾頁書充實自己', '整理了房間變得整潔',
+    '喝了足夠的水', '完成了一件拖延已久的事', '好好保養了皮膚',
+    '跟家人說了我愛你', '按時上床沒有熬夜', '嘗試了一件新事物',
+    '專心工作沒有分心', '做了一件讓自己開心的事', '跟朋友有了溫暖的對話',
+    '忍住沒有亂花錢', '有耐心地面對困難', '今天有好好吃早餐',
+    '走路超過5000步', '完成了一個小目標', '用正面的態度面對挑戰'
+  ],
+  grow: [
+    '希望能早一點睡覺', '可以多喝水保持身體水潤', '少看手機多看書',
+    '希望能多運動增加體力', '少吃零食多吃蔬果', '練習不要太在意別人的眼光',
+    '學會對自己更溫柔一點', '花更多時間陪伴家人', '減少抱怨多看好的一面',
+    '練習深呼吸放鬆自己', '希望能更有耐心', '想要學習一個新技能',
+    '多出門走走曬曬太陽', '練習說不來保護自己', '把心裡的話好好寫下來',
+    '想要減少外食自己煮飯', '學習接受不完美的自己', '可以更勇敢表達感受',
+    '希望能更專注在當下', '學習放下不必要的擔心', '想要培養一個新的好習慣',
+    '多花時間做讓自己快樂的事', '學習感恩每一個小確幸', '希望能更勇敢追求夢想'
+  ]
+};
+
+function toggleAiAssist() {
+  const checked = document.getElementById('aiAssistCheck').checked;
+  const btn = document.getElementById('aiFillBtn');
+  btn.classList.toggle('show', checked);
+  if (!checked) {
+    // Remove ai-filled state from all rows
+    document.querySelectorAll('.diary-input-row').forEach(row => {
+      row.classList.remove('ai-filled', 'confirmed');
+    });
+  }
+}
+
+function aiFillDiary() {
+  const types = ['grateful', 'good', 'grow'];
+  types.forEach(type => {
+    const pool = [...aiSuggestions[type]];
+    [1,2,3].forEach(i => {
+      const input = document.getElementById(type + i);
+      const row = document.getElementById('row_' + type + i);
+      if (input && !input.value.trim()) {
+        const idx = Math.floor(Math.random() * pool.length);
+        input.value = pool.splice(idx, 1)[0] || pool[0];
+        row.classList.add('ai-filled');
+        row.classList.remove('confirmed');
+      }
+    });
+  });
+  showToast('AI 已幫你填好囉，確認或換一個吧！');
+}
+
+function aiRefreshOne(type, num) {
+  const input = document.getElementById(type + num);
+  const row = document.getElementById('row_' + type + num);
+  const pool = aiSuggestions[type];
+  // Pick a different one than current
+  let newVal;
+  let tries = 0;
+  do {
+    newVal = pool[Math.floor(Math.random() * pool.length)];
+    tries++;
+  } while (newVal === input.value && tries < 10);
+  input.value = newVal;
+  row.classList.add('ai-filled');
+  row.classList.remove('confirmed');
+}
+
+function confirmRow(type, num) {
+  const row = document.getElementById('row_' + type + num);
+  row.classList.toggle('confirmed');
 }
 
 // ── Auto-grow textarea ──
