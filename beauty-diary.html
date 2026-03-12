@@ -781,6 +781,7 @@ body {
       <!-- Free mode -->
       <div id="diaryFree" style="display:none;">
         <textarea class="love-textarea" id="loveText" rows="3" oninput="autoGrow(this)" placeholder="今天做了什麼愛自己的事？&#10;寫下你的心情、感受、任何想說的話..."></textarea>
+        <button class="btn" style="background:linear-gradient(135deg,#7c4dff,#536dfe);color:#fff;font-size:14px;padding:10px;margin-top:8px;" onclick="aiFreeWrite()">🤖 AI 幫我寫心情日記</button>
       </div>
 
       <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
@@ -1210,27 +1211,47 @@ function switchDiaryMode(mode) {
   document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
 }
 
-// ── Background music ──
+// ── Background music (auto-play) ──
 const bgMusic = document.getElementById('bgMusic');
 const musicBtn = document.getElementById('musicBtn');
 let musicPlaying = false;
+
 bgMusic.volume = 0.3;
+
+function startMusic() {
+  bgMusic.play().then(() => {
+    musicPlaying = true;
+    musicBtn.textContent = '🎵';
+    musicBtn.classList.add('playing');
+  }).catch(() => {
+    // Autoplay blocked — start on first user interaction
+    const startOnTouch = () => {
+      bgMusic.play().then(() => {
+        musicPlaying = true;
+        musicBtn.textContent = '🎵';
+        musicBtn.classList.add('playing');
+      });
+      document.removeEventListener('touchstart', startOnTouch);
+      document.removeEventListener('click', startOnTouch);
+    };
+    document.addEventListener('touchstart', startOnTouch, { once: true });
+    document.addEventListener('click', startOnTouch, { once: true });
+  });
+}
+startMusic();
 
 function toggleMusic() {
   if (musicPlaying) {
     bgMusic.pause();
     musicBtn.textContent = '🔇';
     musicBtn.classList.remove('playing');
+    musicPlaying = false;
   } else {
-    bgMusic.play().then(() => {
-      musicBtn.textContent = '🎵';
-      musicBtn.classList.add('playing');
-    }).catch(() => {
-      showToast('請先點擊頁面任意處再播放音樂');
-      return;
-    });
+    bgMusic.play();
+    musicBtn.textContent = '🎵';
+    musicBtn.classList.add('playing');
+    musicPlaying = true;
   }
-  musicPlaying = !musicPlaying;
 }
 
 // ── AI assist fill ──
@@ -1316,6 +1337,34 @@ function aiRefreshOne(type, num) {
 function confirmRow(type, num) {
   const row = document.getElementById('row_' + type + num);
   row.classList.toggle('confirmed');
+}
+
+// ── AI free-write diary ──
+const freeDiaryPool = [
+  '今天是平凡但溫暖的一天。早上起來喝了一杯熱咖啡，陽光從窗戶灑進來，突然覺得活著真好。工作雖然忙碌，但完成了一個小目標，很有成就感。晚上散步時聽到鳥叫聲，提醒自己要多留意生活中這些美好的小事。今天的我，值得被溫柔對待。',
+  '最近壓力有點大，但今天決定對自己好一點。中午特別去買了喜歡的甜點，一個人坐在公園的長椅上慢慢享用。看著來來往往的人，覺得每個人都在努力生活著。晚上回家泡了個熱水澡，把煩惱都暫時放下。明天又是新的一天，我會繼續加油的。',
+  '今天跟好久不見的朋友聊了天，聊到以前的趣事笑到肚子痛。原來快樂可以這麼簡單，只要有人懂你就夠了。回家的路上買了一束花送給自己，插在桌上看了就覺得心情好好。感謝生命中有這些溫暖的人陪伴著我，讓我不孤單。',
+  '今天做了一件勇敢的事——說出了自己真正的想法。雖然有點緊張，但說完之後心裡輕鬆好多。以前總是委屈自己去配合別人，現在學會了表達自己的感受。晚上敷了面膜，看著鏡子裡的自己說：你做得很好。愛自己，從尊重自己的感受開始。',
+  '下雨天的心情特別寧靜。窗外的雨聲像是大自然的搖籃曲，泡了一壺花茶，翻開好久沒看的書。不知不覺看了好幾章，享受這種不被打擾的時光。有時候什麼都不做，就是最好的愛自己方式。讓心靜下來，聽聽內在的聲音，一切都會好起來的。',
+  '今天嘗試了新的料理，雖然賣相不太好看，但味道意外地不錯！自己動手做飯的感覺很療癒，從洗菜切菜到擺盤，每個步驟都很專注。吃著自己做的飯，有一種簡單的幸福感。生活不需要多轟轟烈烈，能好好吃一頓飯就是最大的享受。',
+  '今天早起去跑步，呼吸著清晨的空氣，感覺身體裡每個細胞都在甦醒。跑完步全身出了汗，沖個澡之後精神特別好。最近開始注重運動和飲食，不是為了別人，而是想要給自己一個更健康的身體。愛自己，就從照顧好自己的身體開始吧。',
+  '今天被一首歌感動到哭了。歌詞裡說「你不需要完美，只需要做你自己」，突然覺得心裡暖暖的。這陣子太逼自己了，忘了偶爾停下來也沒關係。晚上寫了一封信給自己，謝謝自己這段時間的努力和堅持。親愛的自己，你已經很棒了。',
+  '週末的午後在咖啡廳待了一個下午，看看書、聽聽音樂、發發呆。不趕時間的感覺真好，平常總是忙忙碌碌，難得有這樣放空的時刻。隔壁桌的小朋友對我笑了一下，那個笑容讓我的一天都亮了起來。幸福就藏在這些微小的瞬間裡。',
+  '今天整理了房間，把不需要的東西斷捨離。清掉舊物的過程像是在整理內心，扔掉過期的不只是物品，還有那些不再需要的情緒。整理完之後房間清爽好多，心也跟著輕盈了。新的空間留給新的美好，這就是我送給自己最好的禮物。'
+];
+
+function aiFreeWrite() {
+  const textarea = document.getElementById('loveText');
+  const current = textarea.value.trim();
+  let pick;
+  let tries = 0;
+  do {
+    pick = freeDiaryPool[Math.floor(Math.random() * freeDiaryPool.length)];
+    tries++;
+  } while (pick === current && tries < 10);
+  textarea.value = pick;
+  autoGrow(textarea);
+  showToast('AI 已幫你寫好，可以修改或直接使用！');
 }
 
 // ── Auto-grow textarea ──
