@@ -153,14 +153,15 @@ body {
 /* Text area */
 .love-textarea {
   width: 100%;
-  min-height: 100px;
+  min-height: 80px;
   border: 2px solid #f48fb1;
   border-radius: 14px;
   padding: 14px;
   font-size: 15px;
   font-family: inherit;
-  resize: vertical;
+  resize: none;
   outline: none;
+  overflow: hidden;
   transition: border-color 0.3s;
   background: rgba(255,255,255,0.6);
 }
@@ -639,7 +640,7 @@ body {
 
       <!-- Free mode -->
       <div id="diaryFree" style="display:none;">
-        <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;寫下你的心情、感受、任何想說的話..."></textarea>
+        <textarea class="love-textarea" id="loveText" rows="3" oninput="autoGrow(this)" placeholder="今天做了什麼愛自己的事？&#10;寫下你的心情、感受、任何想說的話..."></textarea>
       </div>
 
       <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
@@ -1067,6 +1068,12 @@ function switchDiaryMode(mode) {
   });
   document.getElementById('diary333').style.display = mode === '333' ? '' : 'none';
   document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
+}
+
+// ── Auto-grow textarea ──
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 // ── Rotating placeholders ──
