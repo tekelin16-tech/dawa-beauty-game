@@ -236,6 +236,52 @@ body {
   margin-bottom: 4px;
   font-size: 13px;
 }
+/* Skin report checklist */
+.skin-report { margin-bottom: 12px; }
+.report-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #c2185b;
+  margin-bottom: 10px;
+}
+.check-list { list-style: none; }
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(233,30,99,0.08);
+  font-size: 14px;
+}
+.check-item:last-child { border-bottom: none; }
+.check-icon { font-size: 16px; flex-shrink: 0; width: 22px; text-align: center; }
+.check-name { font-weight: 600; min-width: 80px; color: #4a2040; }
+.check-note { color: #888; font-size: 13px; flex: 1; }
+.check-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.check-badge.good { background: #e8f5e9; color: #2e7d32; }
+.check-badge.fair { background: #fff8e1; color: #f57f17; }
+.check-badge.poor { background: #fce4ec; color: #c62828; }
+.report-summary {
+  background: rgba(255,255,255,0.7);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.report-summary .sum-label {
+  font-weight: 700;
+  color: #c2185b;
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
 
 /* History */
 .history-list { list-style: none; }
@@ -472,9 +518,16 @@ body {
         </div>
       </div>
       <div class="total-score" id="totalScoreText"></div>
-      <div class="analysis-text" id="analysisBox" style="display:none;">
-        <span class="label">&#x1f489; 膚質分析</span>
-        <span id="analysisContent"></span>
+      <div id="analysisBox" style="display:none;">
+        <div class="skin-report">
+          <div class="report-title">&#x1f4cb; 15 項膚質檢測報告</div>
+          <ul class="check-list" id="checkList"></ul>
+        </div>
+        <div class="report-summary" id="reportSummary"></div>
+        <div class="analysis-text" id="reportTips" style="display:none;">
+          <span class="label">&#x1f4a1; 保養建議</span>
+          <span id="tipsContent"></span>
+        </div>
       </div>
       <div class="feedback-text" id="feedbackBox" style="display:none;">
         <span class="label">&#x1f49d; 溫暖回饋</span>
@@ -880,9 +933,34 @@ function updateResults() {
 
   const analysisBox = document.getElementById('analysisBox');
   if (skinResult) {
-    analysisBox.style.display = '';
-    document.getElementById('analysisContent').textContent =
-      skinResult.analysis + (skinResult.tips ? '\n💡 ' + skinResult.tips : '');
+    analysisBox.style.display = 'block';
+    // Render 15-item checklist
+    const checkList = document.getElementById('checkList');
+    const statusMap = { good: ['✅','良好','good'], fair: ['⚠️','普通','fair'], poor: ['❌','需改善','poor'] };
+    if (skinResult.items && skinResult.items.length > 0) {
+      checkList.innerHTML = '';
+      skinResult.items.forEach(item => {
+        const s = statusMap[item.status] || statusMap.fair;
+        const li = document.createElement('li');
+        li.className = 'check-item';
+        li.innerHTML =
+          '<span class="check-icon">' + s[0] + '</span>' +
+          '<span class="check-name">' + escapeHtml(item.name) + '</span>' +
+          '<span class="check-badge ' + s[2] + '">' + s[1] + '</span>' +
+          '<span class="check-note">' + escapeHtml(item.note || '') + '</span>';
+        checkList.appendChild(li);
+      });
+    } else {
+      checkList.innerHTML = '<li class="check-item" style="justify-content:center;color:#999;">檢測項目載入中...</li>';
+    }
+    // Summary
+    const summary = document.getElementById('reportSummary');
+    summary.innerHTML = '<span class="sum-label">📝 整體評估</span>' + escapeHtml(skinResult.summary || skinResult.analysis || '');
+    // Tips
+    if (skinResult.tips) {
+      document.getElementById('reportTips').style.display = 'block';
+      document.getElementById('tipsContent').textContent = skinResult.tips;
+    }
   } else {
     analysisBox.style.display = 'none';
   }
@@ -911,7 +989,7 @@ async function saveDiary() {
       displayName,
       skinPhotoBase64: photoBase64 || '',  // full original for beauticians
       skinScore: skinResult ? skinResult.score : 0,
-      skinAnalysis: skinResult ? (skinResult.analysis + (skinResult.tips ? ' | ' + skinResult.tips : '')) : '',
+      skinAnalysis: skinResult ? formatSkinReport(skinResult) : '',
       loveText: document.getElementById('loveText').value.trim(),
       loveScore: loveResult ? loveResult.score : 0,
       loveFeedback: loveResult ? loveResult.feedback : '',
@@ -1022,6 +1100,19 @@ async function loadHistory() {
     list.innerHTML = '<li class="empty-history">載入失敗，請稍後再試</li>';
     console.error(e);
   }
+}
+
+function formatSkinReport(sr) {
+  let text = '';
+  if (sr.items && sr.items.length > 0) {
+    const icons = { good: '✅', fair: '⚠️', poor: '❌' };
+    sr.items.forEach(item => {
+      text += (icons[item.status] || '⚠️') + ' ' + item.name + ': ' + (item.note || '') + '\n';
+    });
+  }
+  if (sr.summary) text += '\n📝 ' + sr.summary;
+  if (sr.tips) text += '\n💡 ' + sr.tips;
+  return text || sr.analysis || '';
 }
 
 function escapeHtml(text) {
