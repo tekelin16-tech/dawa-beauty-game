@@ -704,7 +704,7 @@ body {
 
 <div class="toast" id="toast"></div>
 <button class="music-btn" id="musicBtn" onclick="toggleMusic()" title="背景音樂">🔇</button>
-<button class="music-list-btn" id="musicListBtn" onclick="toggleMusicPanel()" title="選擇音樂">🎶</button>
+<button class="music-list-btn" id="musicListBtn" onclick="toggleMusicPanel()" title="選擇音樂" style="display:none;">🎶</button>
 <div class="music-panel" id="musicPanel">
   <div class="panel-title">🎶 選擇音樂</div>
   <div class="music-track" onclick="pickTrack(0)"><span class="track-icon">🌅</span> 夕陽暖光</div>
@@ -1294,12 +1294,14 @@ function startMusic() {
     musicPlaying = true;
     musicBtn.textContent = '🎵';
     musicBtn.classList.add('playing');
+    document.getElementById('musicListBtn').style.display = 'flex';
   }).catch(() => {
     const startOnTouch = () => {
       bgMusic.play().then(() => {
         musicPlaying = true;
         musicBtn.textContent = '🎵';
         musicBtn.classList.add('playing');
+        document.getElementById('musicListBtn').style.display = 'flex';
       });
     };
     document.addEventListener('touchstart', startOnTouch, { once: true });
@@ -1314,11 +1316,14 @@ function toggleMusic() {
     musicBtn.textContent = '🔇';
     musicBtn.classList.remove('playing');
     musicPlaying = false;
+    document.getElementById('musicListBtn').style.display = 'none';
+    document.getElementById('musicPanel').classList.remove('show');
   } else {
     bgMusic.play();
     musicBtn.textContent = '🎵';
     musicBtn.classList.add('playing');
     musicPlaying = true;
+    document.getElementById('musicListBtn').style.display = 'flex';
   }
 }
 
