@@ -610,6 +610,33 @@ body {
   transition: transform 0.3s;
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Music button */
+.music-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 2px 8px rgba(233,30,99,0.2);
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s;
+}
+.music-btn.playing {
+  animation: musicPulse 1.5s ease infinite;
+}
+@keyframes musicPulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
 </style>
 </head>
 <body>
@@ -625,6 +652,10 @@ body {
 </div>
 
 <div class="toast" id="toast"></div>
+<button class="music-btn" id="musicBtn" onclick="toggleMusic()" title="背景音樂">🔇</button>
+<audio id="bgMusic" loop preload="none">
+  <source src="https://game.dawa.homes/music/piano-reflections.mp3" type="audio/mpeg">
+</audio>
 
 <div class="container">
   <div class="header">
@@ -1177,6 +1208,29 @@ function switchDiaryMode(mode) {
   });
   document.getElementById('diary333').style.display = mode === '333' ? '' : 'none';
   document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
+}
+
+// ── Background music ──
+const bgMusic = document.getElementById('bgMusic');
+const musicBtn = document.getElementById('musicBtn');
+let musicPlaying = false;
+bgMusic.volume = 0.3;
+
+function toggleMusic() {
+  if (musicPlaying) {
+    bgMusic.pause();
+    musicBtn.textContent = '🔇';
+    musicBtn.classList.remove('playing');
+  } else {
+    bgMusic.play().then(() => {
+      musicBtn.textContent = '🎵';
+      musicBtn.classList.add('playing');
+    }).catch(() => {
+      showToast('請先點擊頁面任意處再播放音樂');
+      return;
+    });
+  }
+  musicPlaying = !musicPlaying;
 }
 
 // ── AI assist fill ──
