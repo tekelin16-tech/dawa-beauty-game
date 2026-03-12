@@ -863,8 +863,7 @@ body {
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('diary')">寫日記</button>
     <button class="tab-btn" onclick="switchTab('skin')">膚質分析</button>
-    <button class="tab-btn" onclick="switchTab('history')">紀錄</button>
-    <button class="tab-btn" onclick="switchTab('me')">我的</button>
+    <button class="tab-btn" onclick="switchTab('history')">過去紀錄</button>
   </div>
 
   <!-- Diary Tab -->
@@ -1063,40 +1062,6 @@ body {
       </ul>
     </div>
   </div>
-
-  <!-- Me Tab -->
-  <div id="meTab" style="display:none;">
-    <!-- Carousel -->
-    <div class="carousel-wrap" id="carouselWrap"></div>
-
-    <!-- My stats -->
-    <div class="card">
-      <div class="card-title"><span class="icon">📊</span> 我的數據</div>
-      <div class="my-stats">
-        <div class="stat-box"><div class="stat-num" id="myPoints">0</div><div class="stat-label">我的點數</div></div>
-        <div class="stat-box"><div class="stat-num" id="myDiary">0</div><div class="stat-label">日記篇數</div></div>
-        <div class="stat-box"><div class="stat-num" id="myReferrals">0</div><div class="stat-label">推薦好友</div></div>
-      </div>
-    </div>
-
-    <!-- Referral link -->
-    <div class="card">
-      <div class="card-title"><span class="icon">🔗</span> 推薦好友</div>
-      <div class="ref-link-box">
-        <div class="ref-title">分享你的專屬推薦連結</div>
-        <div class="ref-url" id="refUrl">載入中...</div>
-        <button class="ref-copy-btn" onclick="copyRefLink()">📋 複製推薦連結</button>
-      </div>
-    </div>
-
-    <!-- Referral list -->
-    <div class="card">
-      <div class="card-title"><span class="icon">👥</span> 我的推薦名單</div>
-      <ul class="ref-list" id="refList">
-        <li class="ref-empty">載入中...</li>
-      </ul>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -1151,16 +1116,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Tab switching ──
 function switchTab(tab) {
-  const tabs = ['diary','skin','history','me'];
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', tab === tabs[i]);
+    btn.classList.toggle('active',
+      (tab === 'diary' && i === 0) || (tab === 'skin' && i === 1) || (tab === 'history' && i === 2));
   });
   document.getElementById('diaryTab').style.display = tab === 'diary' ? '' : 'none';
   document.getElementById('skinTab').style.display = tab === 'skin' ? '' : 'none';
   document.getElementById('historyTab').style.display = tab === 'history' ? '' : 'none';
-  document.getElementById('meTab').style.display = tab === 'me' ? '' : 'none';
   if (tab === 'history') loadHistory();
-  if (tab === 'me') loadMeTab();
 }
 
 // ── Image compression ──
@@ -1941,90 +1904,6 @@ async function loadHistory() {
   } catch (e) {
     list.innerHTML = '<li class="empty-history">載入失敗，請稍後再試</li>';
     console.error(e);
-  }
-}
-
-// ── Load Me tab ──
-let refLinkUrl = '';
-async function loadMeTab() {
-  if (!userId) {
-    document.getElementById('refList').innerHTML = '<li class="ref-empty">請先登入 LINE</li>';
-    return;
-  }
-  try {
-    const resp = await fetch(API_BASE + '/api/diary/referral-stats/' + encodeURIComponent(userId));
-    const data = await resp.json();
-    console.log('Me tab data:', data);
-    if (!data.success) return;
-
-    // My stats
-    document.getElementById('myPoints').textContent = data.myPoints.balance || 0;
-    document.getElementById('myDiary').textContent = data.myDiaryCount || 0;
-    document.getElementById('myReferrals').textContent = data.referralCount || 0;
-
-    // Referral link
-    refLinkUrl = data.referralUrl;
-    document.getElementById('refUrl').textContent = refLinkUrl;
-
-    // Carousel
-    const wrap = document.getElementById('carouselWrap');
-    if (data.carousel && data.carousel.length > 0) {
-      wrap.innerHTML = '';
-      data.carousel.forEach(c => {
-        const card = document.createElement('div');
-        card.className = 'carousel-card';
-        card.style.background = 'linear-gradient(135deg, ' + (c.color || '#667eea') + ', ' + (c.color || '#667eea') + 'cc)';
-        card.innerHTML =
-          '<div><span class="cc-emoji">' + (c.emoji || '') + '</span>' +
-          '<div class="cc-title">' + escapeHtml(c.title) + '</div>' +
-          (c.description ? '<div class="cc-desc">' + escapeHtml(c.description) + '</div>' : '') +
-          '</div>' +
-          (c.button_url && !c.button_url.startsWith('message://') ? '<a class="cc-btn" href="' + escapeHtml(c.button_url) + '">' + escapeHtml(c.button_text || '了解更多') + '</a>' : '');
-        wrap.appendChild(card);
-      });
-    }
-
-    // Referral list
-    const list = document.getElementById('refList');
-    if (data.referrals && data.referrals.length > 0) {
-      list.innerHTML = '';
-      data.referrals.forEach(r => {
-        const li = document.createElement('li');
-        li.className = 'ref-item';
-        const joinDate = r.joinedAt ? new Date(r.joinedAt) : null;
-        const dateStr = joinDate ? joinDate.getFullYear() + '/' + (joinDate.getMonth()+1) + '/' + joinDate.getDate() : '';
-        li.innerHTML =
-          (r.pictureUrl ? '<img src="' + escapeHtml(r.pictureUrl) + '" alt="">' : '<div style="width:36px;height:36px;border-radius:50%;background:#f8bbd0;"></div>') +
-          '<div>' +
-            '<div class="ref-name">' + escapeHtml(r.displayName) + '</div>' +
-            '<div class="ref-info">' + dateStr + ' 加入</div>' +
-          '</div>' +
-          '<span class="ref-badges">' +
-            '<span class="badge pts-badge">💰' + r.points + '點</span>' +
-            '<span class="badge ' + (r.diaryCount > 0 ? 'skin-badge' : '') + '">📝' + r.diaryCount + '篇</span>' +
-          '</span>';
-        list.appendChild(li);
-      });
-    } else {
-      list.innerHTML = '<li class="ref-empty">還沒有推薦好友，分享連結邀請朋友吧！</li>';
-    }
-  } catch (e) {
-    console.error('Load me tab error:', e);
-  }
-}
-
-function copyRefLink() {
-  if (!refLinkUrl) return;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(refLinkUrl).then(() => showToast('推薦連結已複製！'));
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = refLinkUrl;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('推薦連結已複製！');
   }
 }
 
