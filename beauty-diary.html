@@ -1947,10 +1947,14 @@ async function loadHistory() {
 // ── Load Me tab ──
 let refLinkUrl = '';
 async function loadMeTab() {
-  if (!userId) return;
+  if (!userId) {
+    document.getElementById('refList').innerHTML = '<li class="ref-empty">請先登入 LINE</li>';
+    return;
+  }
   try {
     const resp = await fetch(API_BASE + '/api/diary/referral-stats/' + encodeURIComponent(userId));
     const data = await resp.json();
+    console.log('Me tab data:', data);
     if (!data.success) return;
 
     // My stats
@@ -1975,7 +1979,7 @@ async function loadMeTab() {
           '<div class="cc-title">' + escapeHtml(c.title) + '</div>' +
           (c.description ? '<div class="cc-desc">' + escapeHtml(c.description) + '</div>' : '') +
           '</div>' +
-          (c.button_url ? '<a class="cc-btn" href="' + escapeHtml(c.button_url) + '">' + escapeHtml(c.button_text || '了解更多') + '</a>' : '');
+          (c.button_url && !c.button_url.startsWith('message://') ? '<a class="cc-btn" href="' + escapeHtml(c.button_url) + '">' + escapeHtml(c.button_text || '了解更多') + '</a>' : '');
         wrap.appendChild(card);
       });
     }
