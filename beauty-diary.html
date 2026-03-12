@@ -1037,7 +1037,7 @@ async function analyzeSkin() {
     const resp = await fetch(API_BASE + '/api/diary/analyze-skin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageForAI, userId })
+      body: JSON.stringify({ image: imageForAI, userId, displayName })
     });
     const data = await resp.json();
     if (data.success) {
@@ -1147,7 +1147,7 @@ async function analyzeLove() {
     const resp = await fetch(API_BASE + '/api/diary/analyze-love', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, userId })
+      body: JSON.stringify({ text, userId, displayName })
     });
     const data = await resp.json();
     if (data.success) {
