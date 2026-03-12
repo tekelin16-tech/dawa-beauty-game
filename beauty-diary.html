@@ -215,7 +215,9 @@ body {
   background: rgba(255,255,255,0.6);
 }
 .diary-input:focus { border-color: #e91e63; }
-.diary-input::placeholder { color: #e091ab; font-size: 13px; }
+.diary-input::placeholder { color: #e091ab; font-size: 13px; transition: opacity 0.3s; }
+@keyframes phFade { 0%{opacity:0} 100%{opacity:1} }
+.diary-input.ph-fade::placeholder { animation: phFade 0.5s ease; }
 .diary-input.good-input { border-color: #ce93d8; }
 .diary-input.good-input:focus { border-color: #9c27b0; }
 .diary-input.grow-input { border-color: #90caf9; }
@@ -590,15 +592,15 @@ body {
           <div class="diary-section-title grateful">🙏 3 個今天感恩的事</div>
           <div class="diary-input-row">
             <span class="diary-num grateful">1</span>
-            <input class="diary-input" id="grateful1" placeholder="例如：家人的陪伴很溫暖">
+            <input class="diary-input" id="grateful1" placeholder="">
           </div>
           <div class="diary-input-row">
             <span class="diary-num grateful">2</span>
-            <input class="diary-input" id="grateful2" placeholder="例如：吃到好吃的早餐">
+            <input class="diary-input" id="grateful2" placeholder="">
           </div>
           <div class="diary-input-row">
             <span class="diary-num grateful">3</span>
-            <input class="diary-input" id="grateful3" placeholder="例如：天氣很好心情舒服">
+            <input class="diary-input" id="grateful3" placeholder="">
           </div>
         </div>
 
@@ -606,15 +608,15 @@ body {
           <div class="diary-section-title good">💪 3 個今天做得不錯的事</div>
           <div class="diary-input-row">
             <span class="diary-num good">1</span>
-            <input class="diary-input good-input" id="good1" placeholder="例如：準時完成工作">
+            <input class="diary-input good-input" id="good1" placeholder="">
           </div>
           <div class="diary-input-row">
             <span class="diary-num good">2</span>
-            <input class="diary-input good-input" id="good2" placeholder="例如：做了30分鐘運動">
+            <input class="diary-input good-input" id="good2" placeholder="">
           </div>
           <div class="diary-input-row">
             <span class="diary-num good">3</span>
-            <input class="diary-input good-input" id="good3" placeholder="例如：對自己說了鼓勵的話">
+            <input class="diary-input good-input" id="good3" placeholder="">
           </div>
         </div>
 
@@ -622,15 +624,15 @@ body {
           <div class="diary-section-title grow">🌱 3 個生命可以更好的事</div>
           <div class="diary-input-row">
             <span class="diary-num grow">1</span>
-            <input class="diary-input grow-input" id="grow1" placeholder="例如：想要早一點睡覺">
+            <input class="diary-input grow-input" id="grow1" placeholder="">
           </div>
           <div class="diary-input-row">
             <span class="diary-num grow">2</span>
-            <input class="diary-input grow-input" id="grow2" placeholder="例如：多喝水保持水潤">
+            <input class="diary-input grow-input" id="grow2" placeholder="">
           </div>
           <div class="diary-input-row">
             <span class="diary-num grow">3</span>
-            <input class="diary-input grow-input" id="grow3" placeholder="例如：少看手機多看書">
+            <input class="diary-input grow-input" id="grow3" placeholder="">
           </div>
         </div>
       </div>
@@ -1066,6 +1068,50 @@ function switchDiaryMode(mode) {
   document.getElementById('diary333').style.display = mode === '333' ? '' : 'none';
   document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
 }
+
+// ── Rotating placeholders ──
+const phGrateful = [
+  '家人的陪伴很溫暖', '今天有一頓好吃的飯', '天氣很好讓我心情愉快',
+  '朋友傳了關心的訊息', '身體健康就是最大的幸福', '有一份穩定的工作',
+  '路上看到美麗的花', '能自由選擇想做的事', '有一個溫暖的家可以回',
+  '今天學到了新東西', '有人對我微笑', '能喝到一杯好咖啡',
+  '平安度過一天', '還能呼吸就值得感恩', '有毛小孩的陪伴'
+];
+const phGood = [
+  '準時完成了工作', '做了 30 分鐘運動', '對自己說了鼓勵的話',
+  '早起沒有賴床', '認真吃了一頓健康的餐', '主動幫助了別人',
+  '控制住情緒沒有發脾氣', '看了幾頁書', '整理了房間變得整潔',
+  '喝了足夠的水', '提早完成一件拖延的事', '敷了面膜好好保養',
+  '跟家人說了我愛你', '沒有熬夜按時睡覺', '嘗試了一件新事物'
+];
+const phGrow = [
+  '想要早一點睡覺', '多喝水保持水潤', '少看手機多看書',
+  '可以多運動增加體力', '少吃零食多吃蔬果', '練習不要太在意別人的眼光',
+  '學會對自己更溫柔', '花更多時間陪伴家人', '減少抱怨多看好的一面',
+  '練習深呼吸放鬆自己', '可以更有耐心一點', '學習一個新技能',
+  '多出門走走曬太陽', '練習說「不」保護自己', '把心裡的話寫下來'
+];
+
+let phTimer = null;
+function startPlaceholderRotation() {
+  rotatePlaceholders();
+  if (phTimer) clearInterval(phTimer);
+  phTimer = setInterval(rotatePlaceholders, 30000);
+}
+function rotatePlaceholders() {
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const fields = [];
+  [1,2,3].forEach(i => {
+    const g = document.getElementById('grateful'+i);
+    const d = document.getElementById('good'+i);
+    const r = document.getElementById('grow'+i);
+    if (g && !g.value) { g.placeholder = pick(phGrateful); fields.push(g); }
+    if (d && !d.value) { d.placeholder = pick(phGood); fields.push(d); }
+    if (r && !r.value) { r.placeholder = pick(phGrow); fields.push(r); }
+  });
+  fields.forEach(f => { f.classList.remove('ph-fade'); void f.offsetWidth; f.classList.add('ph-fade'); });
+}
+startPlaceholderRotation();
 
 // ── Collect diary text ──
 function collectDiaryText() {
