@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dawa 美麗日記</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans TC', sans-serif;
+  background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 50%, #fce4ec 100%);
+  min-height: 100vh;
+  color: #4a2040;
+}
+.container { max-width: 480px; margin: 0 auto; padding: 16px; }
+.header {
+  text-align: center;
+  padding: 20px 0 10px;
+}
+.header h1 {
+  font-size: 32px;
+  color: #c2185b;
+  margin-bottom: 4px;
+}
+.header p {
+  font-size: 13px;
+  color: #ad1457;
+  opacity: 0.7;
+}
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 16px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+}
+.user-bar img {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid #e91e63;
+}
+.user-bar .name { font-weight: 600; font-size: 14px; }
+.user-bar .date { font-size: 12px; opacity: 0.6; margin-left: auto; }
+
+.card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(233,30,99,0.1);
+  backdrop-filter: blur(10px);
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c2185b;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon { font-size: 22px; }
+
+/* Photo upload */
+.upload-area {
+  border: 2px dashed #f48fb1;
+  border-radius: 16px;
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: #e91e63;
+  background: rgba(233,30,99,0.05);
+}
+.upload-area .cam-icon { font-size: 40px; display: block; margin-bottom: 8px; }
+.upload-area p { font-size: 14px; color: #ad1457; }
+.upload-area small { font-size: 11px; color: #999; }
+.upload-area input { display: none; }
+
+/* Crop preview */
+.crop-wrap {
+  display: none;
+  position: relative;
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  touch-action: none;
+}
+.crop-wrap img {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+.crop-wrap canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+}
+.crop-wrap .remove-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 5;
+}
+.crop-hint {
+  text-align: center;
+  font-size: 13px;
+  color: #ad1457;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.crop-hint.done { color: #4caf50; }
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 12px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #e91e63, #c2185b);
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(233,30,99,0.4); }
+.btn-primary:disabled {
+  background: #ccc;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Text area */
+.love-textarea {
+  width: 100%;
+  min-height: 100px;
+  border: 2px solid #f48fb1;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.3s;
+  background: rgba(255,255,255,0.6);
+}
+.love-textarea:focus { border-color: #e91e63; }
+.love-textarea::placeholder { color: #e091ab; }
+
+/* Results */
+.result-section { display: none; }
+.score-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.score-circle {
+  width: 120px;
+  text-align: center;
+}
+.circle-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 8px;
+}
+.circle-wrap svg { transform: rotate(-90deg); }
+.circle-bg {
+  fill: none;
+  stroke: #f3e5f5;
+  stroke-width: 8;
+}
+.circle-progress {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.5s ease;
+}
+.circle-progress.skin { stroke: #e91e63; }
+.circle-progress.love { stroke: #9c27b0; }
+.circle-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 28px;
+  font-weight: 700;
+}
+.circle-text.skin-color { color: #e91e63; }
+.circle-text.love-color { color: #9c27b0; }
+.score-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+}
+.total-score {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #c2185b;
+  margin-bottom: 12px;
+}
+.analysis-text, .feedback-text {
+  background: linear-gradient(135deg, #fce4ec, #f3e5f5);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+  white-space: pre-line;
+}
+.analysis-text .label, .feedback-text .label {
+  font-weight: 700;
+  color: #c2185b;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+/* History */
+.history-list { list-style: none; }
+.history-entry {
+  border-bottom: 1px solid rgba(233,30,99,0.12);
+  padding: 14px 0;
+}
+.history-entry:last-child { border-bottom: none; }
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.history-header .date {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ad1457;
+}
+.history-header .scores {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.history-header .badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+.badge.skin-badge { background: #fce4ec; color: #c2185b; }
+.badge.love-badge { background: #f3e5f5; color: #7b1fa2; }
+.badge.total-badge { background: #e91e63; color: #fff; font-size: 13px; padding: 4px 10px; }
+.history-header .arrow {
+  font-size: 12px;
+  color: #ccc;
+  transition: transform 0.3s;
+}
+.history-entry.open .arrow { transform: rotate(90deg); }
+.history-detail {
+  display: none;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+.history-entry.open .history-detail { display: block; }
+.history-photo {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: #f8bbd0;
+}
+.history-block {
+  background: linear-gradient(135deg, #fce4ec, #f3e5f5);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+.history-block .blabel {
+  font-weight: 700;
+  font-size: 12px;
+  color: #c2185b;
+  display: block;
+  margin-bottom: 4px;
+}
+.history-block.love-block { background: linear-gradient(135deg, #f3e5f5, #ede7f6); }
+.history-block.love-block .blabel { color: #7b1fa2; }
+
+.empty-history {
+  text-align: center;
+  padding: 30px;
+  color: #ad1457;
+  opacity: 0.5;
+  font-size: 14px;
+}
+
+/* Loading spinner */
+.spinner-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(252,228,236,0.85);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+.spinner-overlay.show { display: flex; }
+.spinner {
+  width: 50px; height: 50px;
+  border: 4px solid #f8bbd0;
+  border-top-color: #e91e63;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner-text {
+  margin-top: 16px;
+  font-size: 15px;
+  color: #c2185b;
+  font-weight: 600;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  background: rgba(255,255,255,0.6);
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ad1457;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tab-btn.active {
+  background: #e91e63;
+  color: #fff;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  z-index: 2000;
+  transition: transform 0.3s;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="spinner-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="spinner-text" id="loadingText">AI 分析中...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="container">
+  <div class="header">
+    <h1>Dawa 美麗日記</h1>
+    <p>記錄每一天的美麗與自愛</p>
+  </div>
+
+  <div class="user-bar" id="userBar" style="display:none;">
+    <img id="userAvatar" src="" alt="">
+    <span class="name" id="userName">載入中...</span>
+    <span class="date" id="todayDate"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('write')">寫日記</button>
+    <button class="tab-btn" onclick="switchTab('history')">過去紀錄</button>
+  </div>
+
+  <!-- Write Tab -->
+  <div id="writeTab">
+    <!-- Photo Section -->
+    <div class="card">
+      <div class="card-title"><span class="icon">&#x1f4f7;</span> 皮膚紀錄</div>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
+        <span class="cam-icon">&#x1f4f8;</span>
+        <p>點擊上傳皮膚照片</p>
+        <small>支援 JPG / PNG，建議近距離拍攝</small>
+        <input type="file" id="photoInput" accept="image/*" capture="environment">
+      </div>
+      <div class="crop-wrap" id="cropWrap">
+        <img id="cropImg" src="" alt="preview">
+        <canvas id="cropCanvas"></canvas>
+        <button class="remove-btn" onclick="removePhoto(event)">&times;</button>
+      </div>
+      <div class="crop-hint" id="cropHint" style="display:none;">
+        &#x261d;&#xfe0f; 用手指框選要分析的皮膚區域
+      </div>
+      <button class="btn btn-primary" id="analyzeSkinBtn" disabled onclick="analyzeSkin()">
+        &#x2728; AI 膚質分析
+      </button>
+    </div>
+
+    <!-- Love Section -->
+    <div class="card">
+      <div class="card-title"><span class="icon">&#x1f497;</span> 今日自愛紀錄</div>
+      <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;例如：敷了面膜、做了運動、早睡了..."></textarea>
+      <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
+        &#x1f31f; AI 溫暖回饋
+      </button>
+    </div>
+
+    <!-- Results -->
+    <div class="card result-section" id="resultSection">
+      <div class="card-title"><span class="icon">&#x1f4ca;</span> 今日美麗分數</div>
+      <div class="score-row">
+        <div class="score-circle">
+          <div class="circle-wrap">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle class="circle-bg" cx="50" cy="50" r="42"/>
+              <circle class="circle-progress skin" id="skinCircle" cx="50" cy="50" r="42"
+                stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+            </svg>
+            <span class="circle-text skin-color" id="skinScoreText">--</span>
+          </div>
+          <div class="score-label">膚質分數</div>
+        </div>
+        <div class="score-circle">
+          <div class="circle-wrap">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle class="circle-bg" cx="50" cy="50" r="42"/>
+              <circle class="circle-progress love" id="loveCircle" cx="50" cy="50" r="42"
+                stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+            </svg>
+            <span class="circle-text love-color" id="loveScoreText">--</span>
+          </div>
+          <div class="score-label">自愛分數</div>
+        </div>
+      </div>
+      <div class="total-score" id="totalScoreText"></div>
+      <div class="analysis-text" id="analysisBox" style="display:none;">
+        <span class="label">&#x1f489; 膚質分析</span>
+        <span id="analysisContent"></span>
+      </div>
+      <div class="feedback-text" id="feedbackBox" style="display:none;">
+        <span class="label">&#x1f49d; 溫暖回饋</span>
+        <span id="feedbackContent"></span>
+      </div>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveDiary()" style="display:none;">
+        &#x1f4be; 儲存今日日記
+      </button>
+    </div>
+  </div>
+
+  <!-- History Tab -->
+  <div id="historyTab" style="display:none;">
+    <div class="card">
+      <div class="card-title"><span class="icon">&#x1f4d6;</span> 歷史紀錄</div>
+      <ul class="history-list" id="historyList">
+        <li class="empty-history">載入中...</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const LIFF_ID = '2009120543-dYGr67Re';
+const API_BASE = 'https://line.dawa.homes';
+
+let userId = null;
+let displayName = '';
+let photoBase64 = null;   // full original image
+let croppedBase64 = null;  // cropped region for AI
+let skinResult = null;
+let loveResult = null;
+
+// ── Crop state ──
+let cropRect = null;       // {x, y, w, h} in canvas CSS px
+let isDragging = false;
+let dragStart = null;
+let naturalW = 0, naturalH = 0;  // original image dimensions
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+  const now = new Date();
+  document.getElementById('todayDate').textContent =
+    now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate();
+
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (liff.isLoggedIn()) {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      displayName = profile.displayName;
+      document.getElementById('userAvatar').src = profile.pictureUrl || '';
+      document.getElementById('userName').textContent = displayName;
+    } else {
+      try {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      } catch (loginErr) {
+        console.warn('LIFF login failed, using guest mode:', loginErr);
+        displayName = '訪客';
+        document.getElementById('userName').textContent = '訪客（登入 LINE 可獲得點數）';
+      }
+    }
+    document.getElementById('userBar').style.display = 'flex';
+  } catch (e) {
+    console.error('LIFF init error:', e);
+    displayName = '訪客';
+    document.getElementById('userName').textContent = '訪客（登入 LINE 可獲得點數）';
+    document.getElementById('userBar').style.display = 'flex';
+  }
+});
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (tab === 'write' && i === 0) || (tab === 'history' && i === 1));
+  });
+  document.getElementById('writeTab').style.display = tab === 'write' ? '' : 'none';
+  document.getElementById('historyTab').style.display = tab === 'history' ? '' : 'none';
+  if (tab === 'history') loadHistory();
+}
+
+// ── Image compression ──
+function compressImage(dataUrl, maxWidth, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = function() {
+      let w = img.width, h = img.height;
+      if (w > maxWidth) {
+        h = Math.round(h * maxWidth / w);
+        w = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// ── Photo handling ──
+document.getElementById('photoInput').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('照片大小不能超過 10MB');
+    return;
+  }
+  showLoading('壓縮照片中...');
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const rawBase64 = ev.target.result;
+    // Compress for backend storage (max 1200px wide, quality 0.7)
+    photoBase64 = await compressImage(rawBase64, 1200, 0.7);
+    croppedBase64 = null;
+    cropRect = null;
+
+    const img = document.getElementById('cropImg');
+    img.onload = function() {
+      naturalW = img.naturalWidth;
+      naturalH = img.naturalHeight;
+      initCropCanvas();
+      hideLoading();
+    };
+    img.src = photoBase64;
+
+    document.getElementById('cropWrap').style.display = 'block';
+    document.getElementById('uploadArea').style.display = 'none';
+    document.getElementById('cropHint').style.display = 'block';
+    document.getElementById('cropHint').className = 'crop-hint';
+    document.getElementById('cropHint').innerHTML = '&#x261d;&#xfe0f; 用手指框選要分析的皮膚區域';
+    document.getElementById('analyzeSkinBtn').disabled = true;
+  };
+  reader.readAsDataURL(file);
+});
+
+function removePhoto(e) {
+  e.stopPropagation();
+  photoBase64 = null;
+  croppedBase64 = null;
+  cropRect = null;
+  skinResult = null;
+  document.getElementById('cropWrap').style.display = 'none';
+  document.getElementById('cropHint').style.display = 'none';
+  document.getElementById('uploadArea').style.display = '';
+  document.getElementById('analyzeSkinBtn').disabled = true;
+  document.getElementById('analyzeSkinBtn').textContent = '✨ AI 膚質分析';
+  document.getElementById('photoInput').value = '';
+  updateResults();
+}
+
+// ── Crop canvas ──
+function initCropCanvas() {
+  const canvas = document.getElementById('cropCanvas');
+  const img = document.getElementById('cropImg');
+  // Match canvas pixel size to displayed image size
+  const rect = img.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  drawCropOverlay();
+
+  // Remove old listeners by replacing canvas
+  const newCanvas = canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(newCanvas, canvas);
+
+  // Touch events
+  newCanvas.addEventListener('touchstart', onCropStart, { passive: false });
+  newCanvas.addEventListener('touchmove', onCropMove, { passive: false });
+  newCanvas.addEventListener('touchend', onCropEnd, { passive: false });
+  // Mouse events (for desktop testing)
+  newCanvas.addEventListener('mousedown', onCropStart);
+  newCanvas.addEventListener('mousemove', onCropMove);
+  newCanvas.addEventListener('mouseup', onCropEnd);
+}
+
+function getEventPos(e) {
+  const canvas = document.getElementById('cropCanvas');
+  const rect = canvas.getBoundingClientRect();
+  let clientX, clientY;
+  if (e.touches && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
+}
+
+function onCropStart(e) {
+  e.preventDefault();
+  isDragging = true;
+  dragStart = getEventPos(e);
+  cropRect = null;
+  croppedBase64 = null;
+  document.getElementById('analyzeSkinBtn').disabled = true;
+  document.getElementById('cropHint').className = 'crop-hint';
+  document.getElementById('cropHint').innerHTML = '&#x261d;&#xfe0f; 拖曳中...放開完成框選';
+}
+
+function onCropMove(e) {
+  if (!isDragging || !dragStart) return;
+  e.preventDefault();
+  const pos = getEventPos(e);
+  const canvas = document.getElementById('cropCanvas');
+  // Clamp to canvas bounds
+  const x = Math.max(0, Math.min(dragStart.x, pos.x));
+  const y = Math.max(0, Math.min(dragStart.y, pos.y));
+  const w = Math.min(Math.abs(pos.x - dragStart.x), canvas.width - x);
+  const h = Math.min(Math.abs(pos.y - dragStart.y), canvas.height - y);
+  cropRect = { x, y, w, h };
+  drawCropOverlay();
+}
+
+function onCropEnd(e) {
+  if (!isDragging) return;
+  isDragging = false;
+  if (!cropRect || cropRect.w < 20 || cropRect.h < 20) {
+    // Too small — reset
+    cropRect = null;
+    drawCropOverlay();
+    document.getElementById('cropHint').innerHTML = '&#x261d;&#xfe0f; 框選太小，請重新拖曳選取區域';
+    return;
+  }
+  // Generate cropped image
+  generateCroppedImage();
+  document.getElementById('analyzeSkinBtn').disabled = false;
+  document.getElementById('cropHint').className = 'crop-hint done';
+  document.getElementById('cropHint').innerHTML = '&#x2705; 已選取分析區域（可重新拖曳調整）';
+}
+
+function drawCropOverlay() {
+  const canvas = document.getElementById('cropCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!cropRect) {
+    // No selection — draw light overlay with hint
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  // Dark overlay on non-selected area
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Clear the selected area (show original image through)
+  ctx.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+
+  // Draw selection border
+  ctx.strokeStyle = '#e91e63';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([]);
+  ctx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+
+  // Draw corner handles
+  const sz = 10;
+  ctx.fillStyle = '#e91e63';
+  const corners = [
+    [cropRect.x, cropRect.y],
+    [cropRect.x + cropRect.w - sz, cropRect.y],
+    [cropRect.x, cropRect.y + cropRect.h - sz],
+    [cropRect.x + cropRect.w - sz, cropRect.y + cropRect.h - sz]
+  ];
+  corners.forEach(([cx, cy]) => {
+    ctx.fillRect(cx, cy, sz, sz);
+  });
+}
+
+function generateCroppedImage() {
+  if (!cropRect || !photoBase64) return;
+
+  const canvas = document.getElementById('cropCanvas');
+  const displayW = canvas.width;
+  const displayH = canvas.height;
+
+  // Map crop rect from display coords to original image coords
+  const scaleX = naturalW / displayW;
+  const scaleY = naturalH / displayH;
+  const sx = Math.round(cropRect.x * scaleX);
+  const sy = Math.round(cropRect.y * scaleY);
+  const sw = Math.round(cropRect.w * scaleX);
+  const sh = Math.round(cropRect.h * scaleY);
+
+  // Limit cropped region to max 800px for AI analysis
+  let dw = sw, dh = sh;
+  if (dw > 800) {
+    dh = Math.round(dh * 800 / dw);
+    dw = 800;
+  }
+
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = dw;
+  offCanvas.height = dh;
+  const ctx = offCanvas.getContext('2d');
+
+  const img = new Image();
+  img.onload = function() {
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+    croppedBase64 = offCanvas.toDataURL('image/jpeg', 0.8);
+  };
+  img.src = photoBase64;
+}
+
+// ── Analyze skin ──
+async function analyzeSkin() {
+  if (!photoBase64) return;
+  // Use cropped image for AI, fall back to full if no crop
+  const imageForAI = croppedBase64 || photoBase64;
+  showLoading('AI 正在分析您的膚質...');
+  try {
+    const resp = await fetch(API_BASE + '/api/diary/analyze-skin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageForAI, userId })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      skinResult = data;
+      document.getElementById('analyzeSkinBtn').textContent = '✅ 分析完成（點擊重新分析）';
+      updateResults();
+      setTimeout(() => {
+        document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      showToast('膚質分析完成！');
+    } else {
+      showToast('分析失敗：' + (data.error || '未知錯誤'));
+    }
+  } catch (e) {
+    showToast('網路錯誤，請稍後再試');
+    console.error(e);
+  }
+  hideLoading();
+}
+
+// ── Analyze love ──
+async function analyzeLove() {
+  const text = document.getElementById('loveText').value.trim();
+  if (!text) {
+    showToast('請先寫下今天愛自己做的事');
+    return;
+  }
+  showLoading('AI 正在給予溫暖回饋...');
+  try {
+    const resp = await fetch(API_BASE + '/api/diary/analyze-love', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, userId })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      loveResult = data;
+      document.getElementById('analyzeLoveBtn').textContent = '✅ 回饋完成（點擊重新分析）';
+      updateResults();
+      setTimeout(() => {
+        document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      showToast('溫暖回饋已生成！');
+    } else {
+      showToast('分析失敗：' + (data.error || '未知錯誤'));
+    }
+  } catch (e) {
+    showToast('網路錯誤，請稍後再試');
+    console.error(e);
+  }
+  hideLoading();
+}
+
+// ── Update results display ──
+function updateResults() {
+  const section = document.getElementById('resultSection');
+  const hasAny = skinResult || loveResult;
+  section.style.display = hasAny ? 'block' : 'none';
+
+  const skinScore = skinResult ? skinResult.score : 0;
+  const loveScore = loveResult ? loveResult.score : 0;
+  const circumference = 263.89;
+
+  const skinOffset = circumference - (circumference * skinScore / 100);
+  document.getElementById('skinCircle').style.strokeDashoffset = skinOffset;
+  document.getElementById('skinScoreText').textContent = skinResult ? skinScore : '--';
+
+  const loveOffset = circumference - (circumference * loveScore / 100);
+  document.getElementById('loveCircle').style.strokeDashoffset = loveOffset;
+  document.getElementById('loveScoreText').textContent = loveResult ? loveScore : '--';
+
+  const total = Math.round((skinScore + loveScore) / (skinResult && loveResult ? 2 : 1));
+  if (hasAny) {
+    let emoji = total >= 90 ? '🌟' : total >= 70 ? '💖' : total >= 50 ? '🌸' : '🌱';
+    document.getElementById('totalScoreText').textContent =
+      emoji + ' 綜合分數：' + total + ' 分';
+  }
+
+  const analysisBox = document.getElementById('analysisBox');
+  if (skinResult) {
+    analysisBox.style.display = '';
+    document.getElementById('analysisContent').textContent =
+      skinResult.analysis + (skinResult.tips ? '\n💡 ' + skinResult.tips : '');
+  } else {
+    analysisBox.style.display = 'none';
+  }
+
+  const feedbackBox = document.getElementById('feedbackBox');
+  if (loveResult) {
+    feedbackBox.style.display = '';
+    document.getElementById('feedbackContent').textContent = loveResult.feedback;
+  } else {
+    feedbackBox.style.display = 'none';
+  }
+
+  document.getElementById('saveBtn').style.display = hasAny ? '' : 'none';
+}
+
+// ── Save diary (sends FULL original photo to backend) ──
+async function saveDiary() {
+  if (!skinResult && !loveResult) {
+    showToast('請至少完成一項分析');
+    return;
+  }
+  showLoading('儲存中...');
+  try {
+    const body = {
+      userId,
+      displayName,
+      skinPhotoBase64: photoBase64 || '',  // full original for beauticians
+      skinScore: skinResult ? skinResult.score : 0,
+      skinAnalysis: skinResult ? (skinResult.analysis + (skinResult.tips ? ' | ' + skinResult.tips : '')) : '',
+      loveText: document.getElementById('loveText').value.trim(),
+      loveScore: loveResult ? loveResult.score : 0,
+      loveFeedback: loveResult ? loveResult.feedback : '',
+      totalScore: Math.round(
+        ((skinResult ? skinResult.score : 0) + (loveResult ? loveResult.score : 0)) /
+        ((skinResult && loveResult) ? 2 : 1)
+      )
+    };
+    const resp = await fetch(API_BASE + '/api/diary/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      if (data.points && data.points.success) {
+        showToast('日記已儲存！🎉 獲得 ' + data.points.awarded + ' 點！');
+      } else if (data.points && data.points.reason === 'daily_limit') {
+        showToast('日記已儲存！（今日點數已領取）');
+      } else {
+        showToast('日記已儲存！');
+      }
+      // Reset
+      skinResult = null;
+      loveResult = null;
+      photoBase64 = null;
+      croppedBase64 = null;
+      cropRect = null;
+      document.getElementById('cropWrap').style.display = 'none';
+      document.getElementById('cropHint').style.display = 'none';
+      document.getElementById('uploadArea').style.display = '';
+      document.getElementById('analyzeSkinBtn').disabled = true;
+      document.getElementById('analyzeSkinBtn').textContent = '✨ AI 膚質分析';
+      document.getElementById('analyzeLoveBtn').textContent = '🌟 AI 溫暖回饋';
+      document.getElementById('loveText').value = '';
+      document.getElementById('photoInput').value = '';
+      document.getElementById('resultSection').style.display = 'none';
+    } else {
+      showToast('儲存失敗：' + (data.error || '未知錯誤'));
+    }
+  } catch (e) {
+    showToast('網路錯誤，請稍後再試');
+    console.error(e);
+  }
+  hideLoading();
+}
+
+// ── Load history ──
+async function loadHistory() {
+  if (!userId) return;
+  const list = document.getElementById('historyList');
+  list.innerHTML = '<li class="empty-history">載入中...</li>';
+  try {
+    const resp = await fetch(API_BASE + '/api/diary/history/' + encodeURIComponent(userId));
+    const data = await resp.json();
+    if (data.success && data.entries.length > 0) {
+      list.innerHTML = '';
+      data.entries.forEach(entry => {
+        const d = new Date(entry.created_at);
+        const dateStr = d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate();
+        const li = document.createElement('li');
+        li.className = 'history-entry';
+
+        // Header (always visible, click to expand)
+        let headerHtml =
+          '<div class="history-header" onclick="this.parentElement.classList.toggle(\'open\')">' +
+            '<span class="date">' + (entry.skin_score > 0 ? '📷 ' : '💕 ') + dateStr + '</span>' +
+            '<span class="scores">' +
+              (entry.skin_score > 0 ? '<span class="badge skin-badge">膚' + entry.skin_score + '</span>' : '') +
+              (entry.love_score > 0 ? '<span class="badge love-badge">愛' + entry.love_score + '</span>' : '') +
+              '<span class="badge total-badge">' + entry.total_score + '</span>' +
+            '</span>' +
+            '<span class="arrow">▶</span>' +
+          '</div>';
+
+        // Detail (shown on expand)
+        let detailHtml = '<div class="history-detail">';
+
+        // Photo
+        if (entry.skin_photo_url) {
+          detailHtml += '<img class="history-photo" src="' + escapeHtml(entry.skin_photo_url) + '" alt="皮膚照片" onerror="this.style.display=\'none\'">';
+        }
+
+        // Skin analysis
+        if (entry.skin_score > 0 && entry.skin_analysis) {
+          detailHtml += '<div class="history-block"><span class="blabel">💉 膚質分析（' + entry.skin_score + '分）</span>' + escapeHtml(entry.skin_analysis) + '</div>';
+        }
+
+        // Love text
+        if (entry.love_text) {
+          detailHtml += '<div class="history-block love-block"><span class="blabel">💕 今日自愛紀錄</span>' + escapeHtml(entry.love_text) + '</div>';
+        }
+
+        // Love feedback from AI
+        if (entry.love_feedback) {
+          detailHtml += '<div class="history-block love-block"><span class="blabel">💝 AI 溫暖回饋（' + entry.love_score + '分）</span>' + escapeHtml(entry.love_feedback) + '</div>';
+        }
+
+        detailHtml += '</div>';
+
+        li.innerHTML = headerHtml + detailHtml;
+        list.appendChild(li);
+      });
+    } else {
+      list.innerHTML = '<li class="empty-history">還沒有日記紀錄，開始寫第一篇吧！</li>';
+    }
+  } catch (e) {
+    list.innerHTML = '<li class="empty-history">載入失敗，請稍後再試</li>';
+    console.error(e);
+  }
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+// ── UI helpers ──
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || 'AI 分析中...';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

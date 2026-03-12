@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=3.0, user-scalable=yes">
+<title>Dawa美麗人生</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fce4ec;height:100dvh;overflow:hidden;touch-action:pan-x pan-y pinch-zoom;-webkit-user-select:none;user-select:none;font-family:'Press Start 2P',monospace}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+<script>
+// ============================================================
+// Dawa美麗人生 v4.3
+// Mario Bros Pixel Art Style
+// ============================================================
+
+
+// ============================================================
+// 8-bit Sound Effects Engine (Web Audio API)
+// ============================================================
+const SFX = (() => {
+  let ctx = null;
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function play(freq, type, dur, vol=0.3, slide=0) {
+    try {
+      const c = getCtx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, c.currentTime);
+      if (slide) o.frequency.linearRampToValueAtTime(freq+slide, c.currentTime+dur);
+      g.gain.setValueAtTime(vol, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(c.currentTime); o.stop(c.currentTime+dur);
+    } catch(e) {}
+  }
+  function seq(notes, gap=0.1) {
+    const c = getCtx();
+    let t = c.currentTime;
+    notes.forEach(n => {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = n.type || 'square';
+      o.frequency.setValueAtTime(n.f, t);
+      if (n.slide) o.frequency.linearRampToValueAtTime(n.f+n.slide, t+n.d);
+      g.gain.setValueAtTime(n.v || 0.25, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+n.d);
+      o.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t+n.d);
+      t += n.d + (n.gap !== undefined ? n.gap : gap);
+    });
+  }
+  return {
+    // Mario coin sound
+    coin() { seq([{f:988,d:0.06,gap:0.03},{f:1319,d:0.15}], 0); },
+    // Customer arrives - doorbell
+    doorbell() { seq([{f:659,d:0.1,gap:0.05},{f:784,d:0.15}], 0); },
+    // Drop product on customer
+    drop() { play(440, 'square', 0.08, 0.2); },
+    // Service step complete
+    step() { play(660, 'square', 0.1, 0.15, 200); },
+    // Treatment complete - cha-ching
+    complete() { seq([{f:523,d:0.08,gap:0.04},{f:659,d:0.08,gap:0.04},{f:784,d:0.08,gap:0.04},{f:1047,d:0.2}], 0); },
+    // Customer lost - sad
+    fail() { seq([{f:440,d:0.15,gap:0.05,type:'triangle'},{f:349,d:0.15,gap:0.05,type:'triangle'},{f:262,d:0.3,type:'triangle'}], 0); },
+    // Wave complete fanfare
+    waveClear() { seq([
+      {f:523,d:0.1,gap:0.05},{f:659,d:0.1,gap:0.05},{f:784,d:0.1,gap:0.05},
+      {f:1047,d:0.3,gap:0.1},{f:784,d:0.1,gap:0.05},{f:1047,d:0.4}
+    ], 0); },
+    // Game over
+    gameOver() { seq([
+      {f:392,d:0.2,gap:0.1,type:'triangle'},{f:349,d:0.2,gap:0.1,type:'triangle'},
+      {f:330,d:0.2,gap:0.1,type:'triangle'},{f:262,d:0.5,type:'triangle'}
+    ], 0); },
+    // Boss wave alarm
+    boss() { seq([
+      {f:220,d:0.15,gap:0.08},{f:330,d:0.15,gap:0.08},
+      {f:220,d:0.15,gap:0.08},{f:330,d:0.15,gap:0.08},
+      {f:220,d:0.15,gap:0.08},{f:440,d:0.3}
+    ], 0); },
+    // Button press
+    click() { play(800, 'square', 0.05, 0.15); },
+    // Upgrade purchased
+    upgrade() { seq([{f:523,d:0.08,gap:0.03},{f:784,d:0.08,gap:0.03},{f:1047,d:0.08,gap:0.03},{f:1568,d:0.25}], 0); },
+    // Wave start
+    start() { seq([{f:440,d:0.1,gap:0.05},{f:554,d:0.1,gap:0.05},{f:659,d:0.15}], 0); },
+    // Background music
+    _bgmTimer: null,
+    _bgmPlaying: false,
+    bgmStart() {
+      if (this._bgmPlaying) return;
+      this._bgmPlaying = true;
+      const melody = [
+        523,587,659,784,659,587,523,0,
+        659,784,880,784,659,523,587,0,
+        523,659,784,880,1047,880,784,659,
+        523,587,659,523,440,523,0,0
+      ];
+      let i = 0;
+      const playNote = () => {
+        if (!this._bgmPlaying) return;
+        const f = melody[i % melody.length];
+        if (f > 0) play(f, 'square', 0.12, 0.08);
+        i++;
+        this._bgmTimer = setTimeout(playNote, 180);
+      };
+      playNote();
+    },
+    bgmStop() {
+      this._bgmPlaying = false;
+      if (this._bgmTimer) clearTimeout(this._bgmTimer);
+    },
+  };
+})();
+
+const LIFF_ID = '2009120543-DR5lyiB2';
+const API_BASE = 'https://claw.arkapp.pw/game-api';
+
+// LIFF / Cloud save state
+let liffUser = null;
+let liffReady = false;
+
+async function initLIFF() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (liff.isLoggedIn()) {
+      const profile = await liff.getProfile();
+      liffUser = {
+        userId: profile.userId,
+        displayName: profile.displayName,
+        pictureUrl: profile.pictureUrl || ''
+      };
+      liffReady = true;
+      console.log('LIFF logged in:', liffUser.displayName);
+      await loadCloudSave();
+    }
+  } catch (e) {
+    console.warn('LIFF init error:', e);
+  }
+}
+
+async function loadCloudSave() {
+  if (!liffUser) return;
+  try {
+    const resp = await fetch(API_BASE + '/save/' + liffUser.userId);
+    const data = await resp.json();
+    if (data.exists) {
+      const local = loadSave();
+      const merged = {
+        coins: Math.max(local.coins, data.coins),
+        beds: Math.max(local.beds, data.beds),
+        highWave: Math.max(local.highWave, data.highWave)
+      };
+      writeSave(merged);
+      console.log('Cloud save loaded & merged');
+    }
+  } catch (e) {
+    console.warn('Cloud load error:', e);
+  }
+}
+
+async function saveToCloud(saveData) {
+  if (!liffUser) return;
+  try {
+    await fetch(API_BASE + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: liffUser.userId,
+        displayName: liffUser.displayName,
+        pictureUrl: liffUser.pictureUrl,
+        coins: saveData.coins,
+        beds: saveData.beds,
+        highWave: saveData.highWave
+      })
+    });
+  } catch (e) {
+    console.warn('Cloud save error:', e);
+  }
+}
+
+function liffLogin() {
+  if (!liff.isLoggedIn()) {
+    liff.login();
+  }
+}
+
+async function awardGamePoints(userId, points) {
+  try {
+    const resp = await fetch('https://game.dawa.homes/api/game/reward', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, points })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      console.log('🎮 遊戲點數 +' + data.awarded + '，餘額: ' + data.balance);
+    } else {
+      console.log('遊戲點數未發放:', data.reason || data.error);
+    }
+  } catch (e) {
+    console.warn('遊戲點數 API 錯誤:', e);
+  }
+}
+
+initLIFF();
+
+// ============================================================
+// Twemoji image assets
+// ============================================================
+const TWEMOJI = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/';
+const EMOJI_ASSETS = {
+  sparkle: '2728', lotion: '1f9f4', spa: '1f486-200d-2640-fe0f',
+  dna: '1f9ec', droplet: '1f4a7', play: '25b6', check: '2705',
+  cloud: '2601', money: '1f4b0', bed: '1f6cf', trophy: '1f3c6',
+  refresh: '1f504', green_circle: '1f7e2', wave_i: '1f30a', person: '1f464',
+  door: '1f6aa', down_arrow: '2b07', plus_sign: '2795', up_arrow: '2b06',
+  crown: '1f451', heart_eyes: '1f60d', angry_face: '1f624', anger: '1f4a2',
+  star_full: '2b50', wrench: '1f527', house: '1f3e0', woman: '1f469',
+  woman_red: '1f469-200d-1f9b0', princess: '1f478', point_up: '1f446',
+  timer: '23f1',
+};
+
+// Map product/customer emoji chars to asset keys
+const EMOJI_KEY = {
+  '\u2728': 'sparkle', '\uD83E\uDDF4': 'lotion', '\uD83E\uDDEC': 'dna',
+  '\uD83D\uDCA7': 'droplet', '\uD83D\uDC69': 'woman', '\uD83D\uDC78': 'princess',
+  '\uD83D\uDC51': 'crown', '\uD83D\uDCB0': 'money', '\uD83D\uDE0D': 'heart_eyes',
+  '\uD83D\uDE24': 'angry_face', '\uD83D\uDCA2': 'anger', '\u2B50': 'star_full',
+  '\u2705': 'check',
+};
+
+const GW = 500, GH = 900;
+
+// Mario color palette
+const MARIO = {
+  SKY: 0xfce4ec,
+  BRICK: 0xd4618c,
+  BRICK_DARK: 0xb04070,
+  BRICK_LIGHT: 0xf0a0b8,
+  GROUND: 0xe91e63,
+  GROUND_DARK: 0xc2185b,
+  BLOCK_YELLOW: 0xf8bbd0,
+  BLOCK_DARK: 0xe48aab,
+  PIPE_GREEN: 0xf48fb1,
+  PIPE_DARK: 0xd4618c,
+  PIPE_LIGHT: 0xfce4ec,
+  HUD_BLACK: 0x1a0010,
+  COIN_GOLD: 0xffd54f,
+  WHITE: 0xfcfcfc,
+  CLOUD_WHITE: 0xffffff,
+  QUESTION: 0xf8bbd0,
+  BAR_GREEN: 0x4caf50,
+  RED: 0xfc1820,
+  TEXT_WHITE: '#fcfcfc',
+};
+
+const PRODUCTS = [
+  { key: 'cleanse', name: '清潔', eKey: 'lotion', color: 0x3498db, desc: 'DAWA 潔膚' },
+  { key: 'serum', name: '精華', eKey: 'dna', color: 0x9b59b6, desc: '外泌體精華' },
+  { key: 'moisturize', name: '保濕', eKey: 'droplet', color: 0x1abc9c, desc: '保濕精華' },
+];
+
+const CUST_TYPES = {
+  basic:  { needs: ['cleanse','moisturize'], patience: 38, reward: 25, eKey: 'woman', color: 0x27ae60 },
+  normal: { needs: ['cleanse','serum','moisturize'], patience: 45, reward: 40, eKey: 'woman_red', color: 0x3498db },
+  vip:    { needs: ['cleanse','serum','moisturize'], patience: 35, reward: 65, eKey: 'princess', color: 0xe67e22 },
+};
+
+const TIPS = [
+  'DAWA 外泌體精華含高濃度生長因子',
+  'DAWA 保濕精華深層鎖水 72 小時',
+  '外泌體能促進肌膚自我修復能力',
+  'DAWA H6 導入儀讓精華吸收加倍',
+];
+
+const BED_COSTS = [0, 80, 160, 300];
+
+function getWaveConfig(wave) {
+  // Wave 1: 3 customers, easy
+  // Wave 2: 4 customers, normal
+  // Wave 3: 4 customers, harder (faster, mixed types)
+  // Wave 4: BOSS - 10 customers, very impatient, 3 fails = game over
+  // Wave 5+: endless escalation
+  const configs = {
+    1: { count: 2, interval: 10, speed: 0.8, types: ['basic'], maxFail: 1 },
+    2: { count: 3, interval: 8,  speed: 1.0, types: ['basic','basic'], maxFail: 2 },
+    3: { count: 4, interval: 6,  speed: 1.3, types: ['basic','normal','normal'], maxFail: 2 },
+    4: { count: 10, interval: 4, speed: 1.8, types: ['basic','normal','normal','vip'], maxFail: 2, boss: true }
+  };
+  return configs[wave] || configs[4]; // Max 4 waves
+}
+
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem('spaMaster') || '{}');
+    return { coins: d.coins || 0, beds: d.beds || 1, highWave: d.highWave || 0 };
+  } catch(e) { return { coins: 0, beds: 1, highWave: 0 }; }
+}
+function writeSave(data) {
+  try { localStorage.setItem('spaMaster', JSON.stringify(data)); } catch(e) {}
+  saveToCloud(data);
+}
+
+// Pixel font family constant
+const PX_FONT = '"Press Start 2P", monospace';
+const CN_FONT = '-apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif';
+
+// Helper: text (pixel font)
+function T(scene, x, y, t, s={}) {
+  return scene.add.text(x, y, t, {
+    fontFamily: CN_FONT,
+    fontSize: '20px', color: MARIO.TEXT_WHITE, ...s
+  }).setOrigin(0.5);
+}
+
+// Helper: emoji image
+function E(scene, x, y, key, size) {
+  return scene.add.image(x, y, 'e_' + key).setDisplaySize(size, size);
+}
+
+// Helper: rounded rect (pixel style = small radius 2-4px)
+function RR(g, x, y, w, h, r, c, a=1) { g.fillStyle(c, a); g.fillRoundedRect(x, y, w, h, Math.min(r, 4)); }
+
+// Helper: Draw a brick block
+function drawBrick(g, x, y, w, h) {
+  g.fillStyle(MARIO.BRICK);
+  g.fillRect(x, y, w, h);
+  // Brick lines
+  g.lineStyle(2, MARIO.BRICK_DARK, 1);
+  g.strokeRect(x, y, w, h);
+  // Inner highlight
+  g.fillStyle(MARIO.BRICK_LIGHT, 0.3);
+  g.fillRect(x+2, y+2, w-4, 2);
+  g.fillRect(x+2, y+2, 2, h-4);
+}
+
+// Helper: Draw a ? block
+function drawQuestionBlock(g, x, y, w, h) {
+  g.fillStyle(MARIO.BLOCK_YELLOW);
+  g.fillRect(x, y, w, h);
+  g.lineStyle(2, MARIO.BLOCK_DARK, 1);
+  g.strokeRect(x, y, w, h);
+  // Inner shadow
+  g.fillStyle(MARIO.BLOCK_DARK, 0.3);
+  g.fillRect(x+w-4, y+2, 3, h-4);
+  g.fillRect(x+2, y+h-4, w-4, 3);
+  // Inner highlight
+  g.fillStyle(0xfcfcfc, 0.4);
+  g.fillRect(x+2, y+2, w-4, 3);
+  g.fillRect(x+2, y+2, 3, h-4);
+}
+
+// Helper: Draw a pipe top
+function drawPipeTop(g, x, y, w, h) {
+  // Pipe lip
+  g.fillStyle(MARIO.PIPE_LIGHT);
+  g.fillRect(x-4, y, w+8, 12);
+  g.fillStyle(MARIO.PIPE_GREEN);
+  g.fillRect(x, y+12, w, h-12);
+  // Highlight
+  g.fillStyle(0xfcfcfc, 0.2);
+  g.fillRect(x-4, y, 4, 12);
+  g.fillRect(x, y+12, 4, h-12);
+  // Dark edge
+  g.fillStyle(MARIO.PIPE_DARK, 0.5);
+  g.fillRect(x+w, y, 4, 12);
+  g.fillRect(x+w-4, y+12, 4, h-12);
+}
+
+// Helper: Draw pixelated cloud
+function drawCloud(g, x, y, scale) {
+  const s = scale || 1;
+  g.fillStyle(MARIO.CLOUD_WHITE, 0.9);
+  // Cloud shape using blocks
+  g.fillRect(x - 12*s, y, 24*s, 12*s);
+  g.fillRect(x - 18*s, y + 4*s, 36*s, 8*s);
+  g.fillRect(x - 6*s, y - 6*s, 12*s, 8*s);
+  g.fillRect(x + 6*s, y - 4*s, 8*s, 6*s);
+}
+
+// Helper: Draw pixelated hill
+function drawHill(g, x, y, size) {
+  g.fillStyle(MARIO.GROUND, 0.7);
+  for (let row = 0; row < size; row++) {
+    const w = (size - row) * 16;
+    g.fillRect(x - w/2, y - row * 8, w, 10);
+  }
+}
+
+// ============================================================
+// BOOT — preload emoji images
+// ============================================================
+class BootScene extends Phaser.Scene {
+  constructor() { super('Boot'); }
+  preload() {
+    const cx = GW/2, cy = GH/2;
+    this.add.text(cx, cy-20, 'LOADING...', { fontSize: '24px', color: '#fcfcfc', fontFamily: PX_FONT }).setOrigin(0.5);
+    const barBg = this.add.graphics();
+    barBg.fillStyle(0x333333); barBg.fillRoundedRect(cx-100, cy+20, 200, 16, 2);
+    const barFill = this.add.graphics();
+    let loaded = 0;
+    const total = Object.keys(EMOJI_ASSETS).length;
+    this.load.on('progress', v => {
+      barFill.clear(); barFill.fillStyle(MARIO.BRICK);
+      barFill.fillRoundedRect(cx-100, cy+20, 200*v, 16, 2);
+    });
+    for (const [key, code] of Object.entries(EMOJI_ASSETS)) {
+      this.load.image('e_' + key, TWEMOJI + code + '.png');
+    }
+  }
+  create() {
+    const self = this;
+    // Wait for LIFF init, then decide which scene
+    function startGame() {
+      const save = loadSave();
+      self.registry.set('wave', 1);
+      self.registry.set('totalCoins', save.coins);
+      self.registry.set('beds', save.beds);
+      self.scene.start('Game');
+    }
+    // If came from LIFF (liffUser already set), skip menu
+    if (liffUser) {
+      startGame();
+    } else if (liffReady && !liffUser) {
+      // LIFF initialized but not logged in
+      self.scene.start('Menu');
+    } else {
+      // LIFF not ready yet — wait a bit then check
+      let checks = 0;
+      const interval = setInterval(() => {
+        checks++;
+        if (liffUser) { clearInterval(interval); startGame(); }
+        else if (liffReady || checks > 20) { clearInterval(interval); self.scene.start('Menu'); }
+      }, 150);
+    }
+  }
+}
+
+// ============================================================
+// MENU — Mario style title screen
+// ============================================================
+class MenuScene extends Phaser.Scene {
+  constructor() { super('Menu'); }
+  create() {
+    const W = GW, H = GH;
+    const save = loadSave();
+
+    // Mario sky background
+    const bg = this.add.graphics();
+    bg.fillStyle(MARIO.SKY);
+    bg.fillRect(0, 0, W, H);
+
+    // Clouds
+    drawCloud(bg, 60, 80, 2);
+    drawCloud(bg, 350, 50, 1.5);
+    drawCloud(bg, 200, 120, 1);
+    drawCloud(bg, 440, 140, 1.8);
+
+    // Hills
+    drawHill(bg, 80, H*0.75, 5);
+    drawHill(bg, 350, H*0.75, 3);
+    drawHill(bg, 480, H*0.75, 4);
+
+    // Ground (green)
+    bg.fillStyle(MARIO.GROUND);
+    bg.fillRect(0, H*0.75, W, H*0.05);
+    bg.fillStyle(MARIO.GROUND_DARK);
+    bg.fillRect(0, H*0.75 + H*0.05, W, H*0.25);
+
+    // Brick ground pattern
+    bg.fillStyle(MARIO.BRICK);
+    bg.fillRect(0, H*0.80, W, H*0.20);
+    for (let bx = 0; bx < W; bx += 32) {
+      for (let by = H*0.80; by < H; by += 16) {
+        bg.lineStyle(1, MARIO.BRICK_DARK, 0.4);
+        bg.strokeRect(bx, by, 32, 16);
+        const row = Math.floor((by - H*0.80) / 16);
+        if (row % 2 === 1) {
+          bg.lineStyle(1, MARIO.BRICK_DARK, 0.4);
+          bg.strokeRect(bx + 16, by, 32, 16);
+        }
+      }
+    }
+
+    // Brick block row at top for decoration
+    for (let bx = 0; bx < W; bx += 34) {
+      drawBrick(bg, bx, H*0.08, 32, 16);
+    }
+
+    // ? blocks scattered
+    drawQuestionBlock(bg, 100, H*0.08, 32, 16);
+    drawQuestionBlock(bg, 234, H*0.08, 32, 16);
+    drawQuestionBlock(bg, 368, H*0.08, 32, 16);
+
+    // Sparkles (keep the floating effect)
+    for (let i = 0; i < 18; i++) {
+      const s = E(this, Phaser.Math.Between(15,W-15), Phaser.Math.Between(15, H*0.70), 'sparkle',
+        Phaser.Math.Between(10,20)).setAlpha(0);
+      this.tweens.add({ targets: s, alpha: 0.5, duration: Phaser.Math.Between(1000,2000),
+        delay: Phaser.Math.Between(0,2500), yoyo: true, repeat: -1 });
+    }
+
+    // Title with pixel shadow
+    T(this, W/2, H*0.16, 'Dawa', { fontFamily: PX_FONT, fontSize: '56px',
+      shadow: { offsetY: 5, color: '#000000', blur: 0, fill: true },
+      stroke: '#000000', strokeThickness: 5 });
+    T(this, W/2, H*0.16+68, '美 麗 人 生', { fontFamily: CN_FONT, fontSize: '36px', color: 'rgba(255,255,200,0.95)', letterSpacing: 10,
+      stroke: '#000000', strokeThickness: 3 });
+
+    // Product icon row
+    const iconKeys = ['lotion','spa','dna','droplet','sparkle'];
+    iconKeys.forEach((ek, i) => {
+      const t = E(this, W/2-80+i*42, H*0.35, ek, 48);
+      this.tweens.add({ targets: t, y: H*0.35-12, duration: 700+i*80, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    });
+
+    T(this, W/2, H*0.42, '拖拽產品給客人', { fontFamily: CN_FONT, fontSize: '18px', color: 'rgba(255,255,255,0.85)' });
+
+    // Play button (Mario coin block style)
+    const by = H*0.50;
+    const btnW = 280, btnH = 72;
+    const glow = this.add.graphics();
+    drawQuestionBlock(glow, W/2-btnW/2-5, by-5, btnW+10, btnH+10);
+    glow.setAlpha(0.25);
+    this.tweens.add({ targets: glow, alpha: 0.08, duration: 900, yoyo: true, repeat: -1 });
+    const btn = this.add.graphics();
+    drawQuestionBlock(btn, W/2-btnW/2, by, btnW, btnH);
+    T(this, W/2, by+btnH/2, '開始遊戲', { fontFamily: CN_FONT, fontSize: '28px',
+      shadow: { offsetY: 2, color: '#000000', blur: 0, fill: true } });
+    E(this, W/2+85, by+btnH/2, 'play', 30);
+    this.add.zone(W/2, by+btnH/2, btnW, btnH).setInteractive().on('pointerdown', () => {
+      SFX.click();
+      this.registry.set('wave', 1);
+      this.registry.set('totalCoins', save.coins);
+      this.registry.set('beds', save.beds);
+      this.scene.start('Game');
+    });
+
+    // LINE Login / User info
+    const ly = H*0.62;
+    if (liffUser) {
+      const lg = this.add.graphics();
+      RR(lg, 30, ly, W-60, 65, 4, 0x00a800, 0.5);
+      lg.lineStyle(2, MARIO.PIPE_LIGHT, 1);
+      lg.strokeRoundedRect(30, ly, W-60, 65, 4);
+      T(this, W/2, ly+18, liffUser.displayName, { fontFamily: CN_FONT, fontSize: '18px', color: '#48d848' });
+      E(this, W/2-80, ly+18, 'check', 20);
+      const idShort = liffUser.userId.substring(0, 10) + '...';
+      const cloudRow = this.add.container(W/2, ly+42);
+      cloudRow.add(E(this, -50, 0, 'cloud', 20));
+      cloudRow.add(this.add.text(-35, 0, '雲端同步中 | ID: ' + idShort, {
+        fontFamily: CN_FONT, fontSize: '12px', color: 'rgba(255,255,255,0.5)'
+      }).setOrigin(0, 0.5));
+    } else {
+      const lg = this.add.graphics();
+      RR(lg, W/2-110, ly, 220, 45, 4, 0x00a800);
+      lg.lineStyle(2, MARIO.PIPE_LIGHT, 1);
+      lg.strokeRoundedRect(W/2-110, ly, 220, 45, 4);
+      E(this, W/2-85, ly+22, 'green_circle', 20);
+      T(this, W/2+10, ly+22, 'LINE 登入', { fontFamily: CN_FONT, fontSize: '16px' });
+      this.add.zone(W/2, ly+22, 220, 45).setInteractive().on('pointerdown', () => liffLogin());
+    }
+
+    // Stats (brick block style)
+    const sy = ly + 55;
+    if (save.coins > 0 || save.highWave > 0) {
+      const sg = this.add.graphics();
+      drawBrick(sg, 30, sy, W-60, 90);
+      sg.fillStyle(0x000000, 0.4);
+      sg.fillRect(32, sy+2, W-64, 86);
+      const row1 = this.add.container(W/2, sy+20);
+      row1.add(E(this, -60, 0, 'money', 26));
+      row1.add(this.add.text(-42, 0, '金幣：' + save.coins, { fontFamily: CN_FONT, fontSize: '20px', color: '#ffd700' }).setOrigin(0, 0.5));
+      const row2 = this.add.container(W/2, sy+45);
+      row2.add(E(this, -60, 0, 'bed', 26));
+      row2.add(this.add.text(-42, 0, '美容床：' + save.beds + ' / 4', { fontFamily: CN_FONT, fontSize: '16px', color: 'rgba(255,255,255,0.8)' }).setOrigin(0, 0.5));
+      const row3 = this.add.container(W/2, sy+70);
+      row3.add(E(this, -60, 0, 'trophy', 26));
+      row3.add(this.add.text(-42, 0, '最高波次：' + save.highWave, { fontFamily: CN_FONT, fontSize: '16px', color: 'rgba(255,255,255,0.8)' }).setOrigin(0, 0.5));
+    }
+
+    // Reset button
+    if (save.coins > 0 || save.beds > 1) {
+      const rx = W - 70, ry = H - 45;
+      const resetCont = this.add.container(rx, ry);
+      resetCont.add(E(this, -20, 0, 'refresh', 20));
+      resetCont.add(this.add.text(0, 0, '重置', { fontFamily: CN_FONT, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }).setOrigin(0, 0.5));
+      resetCont.setSize(70, 30).setInteractive()
+        .on('pointerdown', () => { writeSave({ coins: 0, beds: 1, highWave: 0 }); this.scene.restart(); });
+    }
+
+    T(this, W/2, H*0.77-5, 'by DAWA 保泌精華', { fontFamily: CN_FONT, fontSize: '13px', color: 'rgba(255,255,255,0.4)' });
+  }
+}
+
+// ============================================================
+// GAME SCENE
+// ============================================================
+class GameScene extends Phaser.Scene {
+  constructor() { super('Game'); }
+
+  create() {
+    this.W = GW; this.H = GH;
+    this.wave = this.registry.get('wave') || 1;
+    this.waveConf = getWaveConfig(this.wave);
+    this.beds = this.registry.get('beds') || loadSave().beds || 1;
+    this.coins = this.registry.get('totalCoins') || 0;
+    this.served = 0; this.failed = 0; this.spawned = 0;
+    this.over = false;
+    this.queue = [];
+    this.dragItem = null;
+
+    this.drawBg();
+    this.createHUD();
+    this.createWaitingArea();
+    this.createSeats();
+    this.createProductBar();
+
+    this.spawner = this.time.addEvent({
+      delay: this.waveConf.interval * 1000 / this.waveConf.speed,
+      loop: true, callback: () => this.spawnToQueue()
+    });
+    this.time.delayedCall(500, () => this.spawnToQueue());
+
+    this.input.on('drop', (pointer, gameObject, dropZone) => {
+      if (!this.dragItem) return;
+      const seatIdx = this.seatObjs.findIndex(s => s.dropZone === dropZone);
+      if (seatIdx < 0) return;
+      if (this.dragItem.type === 'customer') {
+        this.seatCustomer(this.dragItem.custData, seatIdx);
+      } else if (this.dragItem.type === 'product') {
+        this.handleProductDrop(this.dragItem.product, seatIdx);
+        SFX.drop();
+      }
+    });
+
+    if (this.wave === 1 && !this.registry.get('tutDone')) this.showTutorial();
+    this.showWaveBanner();
+  }
+
+  showWaveBanner() {
+    const cont = this.add.container(this.W/2, this.H/2 - 50).setDepth(200).setAlpha(0);
+    cont.add(E(this, -60, 0, 'wave_i', 48));
+    const isBoss = this.waveConf.boss;
+    if (isBoss) SFX.boss(); else SFX.start();
+    SFX.bgmStart();
+    const waveLabel = isBoss ? '\u2620\uFE0F 魔王波！' : '第 ' + this.wave + ' 波';
+    const waveColor = isBoss ? '#fc1820' : '#fcfcfc';
+    cont.add(this.add.text(10, 0, waveLabel, {
+      fontFamily: CN_FONT, fontSize: isBoss ? '32px' : '36px', color: waveColor,
+      shadow: { offsetY: 3, color: '#000000', blur: 0, fill: true },
+      stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5));
+    const sub = this.add.container(this.W/2, this.H/2).setDepth(200).setAlpha(0);
+    const failNote = isBoss ? '  \u26A0\uFE0F 失去3位客人即失敗！' : '';
+    sub.add(this.add.text(0, 0, '客人 x' + this.waveConf.count + failNote, {
+      fontFamily: CN_FONT, fontSize: isBoss ? '16px' : '20px', color: isBoss ? '#ffd700' : 'rgba(255,255,255,0.9)'
+    }).setOrigin(0.5));
+    sub.add(E(this, 70, 0, 'bed', 26));
+    sub.add(this.add.text(90, 0, 'x' + this.beds, {
+      fontFamily: PX_FONT, fontSize: '20px', color: 'rgba(255,255,255,0.9)'
+    }).setOrigin(0, 0.5));
+    this.tweens.add({ targets: [cont, sub], alpha: 1, duration: 300 });
+    this.tweens.add({ targets: [cont, sub], alpha: 0, y: '-=30', duration: 400, delay: 1200,
+      onComplete: () => { cont.destroy(); sub.destroy(); }
+    });
+  }
+
+  drawBg() {
+    const g = this.add.graphics();
+    // Mario sky
+    g.fillStyle(MARIO.SKY);
+    g.fillRect(0, 0, this.W, this.H);
+
+    // Clouds in the sky area
+    drawCloud(g, 50, 30, 1.5);
+    drawCloud(g, 300, 20, 1);
+    drawCloud(g, 450, 45, 1.2);
+
+    // Small hills at mid-ground
+    drawHill(g, 30, this.H - 200, 2);
+    drawHill(g, this.W - 50, this.H - 200, 3);
+
+    // Ground strip (green)
+    g.fillStyle(MARIO.GROUND);
+    g.fillRect(0, this.H - 180, this.W, 6);
+
+    // Brick ground at bottom
+    g.fillStyle(0xf8bbd0, 0.3);
+    for (let bx = 0; bx < this.W; bx += 32) {
+      for (let by = 0; by < this.H; by += 32) {
+        if ((Math.floor(bx/32) + Math.floor(by/32)) % 2 === 0) {
+          g.fillRect(bx, by, 32, 32);
+        }
+      }
+    }
+  }
+
+  createHUD() {
+    // Brick-block style HUD bar
+    const hud = this.add.graphics().setDepth(50);
+    // Black background bar
+    hud.fillStyle(MARIO.HUD_BLACK, 0.92);
+    hud.fillRect(0, 0, this.W, 52);
+    // Brick border at bottom
+    hud.fillStyle(MARIO.BRICK);
+    hud.fillRect(0, 50, this.W, 4);
+
+    const waveC = this.add.container(55, 28).setDepth(51);
+    waveC.add(E(this, -18, 0, 'wave_i', 26));
+    this.hudWaveT = this.add.text(2, 0, '' + this.wave, { fontFamily: PX_FONT, fontSize: '22px', color: MARIO.TEXT_WHITE }).setOrigin(0, 0.5);
+    waveC.add(this.hudWaveT);
+
+    const coinC = this.add.container(this.W/2, 28).setDepth(51);
+    coinC.add(E(this, -45, 0, 'money', 26));
+    this.hudCoinsT = this.add.text(-25, 0, '' + this.coins, { fontFamily: PX_FONT, fontSize: '18px', color: '#ffd700' }).setOrigin(0, 0.5);
+    coinC.add(this.hudCoinsT);
+    this.hudCoinC = coinC;
+
+    const servC = this.add.container(this.W-55, 28).setDepth(51);
+    servC.add(E(this, -25, 0, 'person', 26));
+    this.hudServedT = this.add.text(-5, 0, '0/' + this.waveConf.count, { fontFamily: PX_FONT, fontSize: '16px', color: MARIO.TEXT_WHITE }).setOrigin(0, 0.5);
+    servC.add(this.hudServedT);
+  }
+
+  updateHUD() {
+    this.hudCoinsT.setText('' + this.coins);
+    this.hudServedT.setText(this.served + '/' + this.waveConf.count);
+  }
+
+  createWaitingArea() {
+    const areaY = 58, areaH = 80;
+    const bg = this.add.graphics().setDepth(2);
+    // Brick-style waiting area
+    drawBrick(bg, 10, areaY, this.W-20, areaH);
+    bg.fillStyle(0x000000, 0.3);
+    bg.fillRect(12, areaY+2, this.W-24, areaH-4);
+    E(this, 30, areaY + areaH/2, 'door', 34).setDepth(3);
+    this.queueY = areaY + areaH/2 + 5;
+    this.queueStartX = 70;
+    this.queueSpacing = 65;
+  }
+
+  createSeats() {
+    this.seatObjs = [];
+    const count = this.beds;
+    const seatW = count <= 2 ? 160 : count <= 3 ? 140 : 110;
+    const gap = 12;
+    const totalW = count * seatW + (count-1) * gap;
+    const startX = (this.W - totalW) / 2;
+    const seatY = 155;
+    const seatH = 230;
+
+    for (let i = 0; i < count; i++) {
+      const x = startX + i * (seatW + gap);
+      const cx = x + seatW / 2;
+      const cont = this.add.container(0, 0).setDepth(5);
+
+      // Pipe-style shadow
+      const shadow = this.add.graphics();
+      shadow.fillStyle(0x000000, 0.15);
+      shadow.fillRect(x+3, seatY+3, seatW, seatH);
+      cont.add(shadow);
+
+      // Pipe-style seat (green pipe platform)
+      const chair = this.add.graphics();
+      // Green pipe body
+      chair.fillStyle(MARIO.PIPE_GREEN, 0.95);
+      chair.fillRect(x, seatY, seatW, seatH);
+      // Pipe lip at top
+      chair.fillStyle(MARIO.PIPE_LIGHT, 0.9);
+      chair.fillRect(x-3, seatY, seatW+6, 10);
+      // Highlight
+      chair.fillStyle(0xfcfcfc, 0.15);
+      chair.fillRect(x, seatY+10, 6, seatH-10);
+      // Dark edge
+      chair.fillStyle(MARIO.PIPE_DARK, 0.3);
+      chair.fillRect(x+seatW-6, seatY+10, 6, seatH-10);
+      // Border
+      chair.lineStyle(2, MARIO.PIPE_DARK, 0.8);
+      chair.strokeRect(x, seatY, seatW, seatH);
+      cont.add(chair);
+
+      E(this, cx, seatY+16, 'bed', 20).setDepth(6);
+
+      const emptyLabel = E(this, cx, seatY+seatH/2, 'plus_sign', 44).setAlpha(0.3);
+      cont.add(emptyLabel);
+
+      const needsContainer = this.add.container(0, 0);
+      cont.add(needsContainer);
+
+      const dropZone = this.add.zone(cx, seatY+seatH/2, seatW, seatH).setInteractive({ dropZone: true }).setDepth(6);
+
+      this.seatObjs.push({
+        x, y: seatY, w: seatW, h: seatH, cx, cont, chair, emptyLabel,
+        needsContainer, dropZone, cust: null, serving: false
+      });
+    }
+  }
+
+  createProductBar() {
+    const trayY = this.H - 175;
+    const trayH = 175;
+    const g = this.add.graphics().setDepth(10);
+    // Black bar with brick border
+    g.fillStyle(MARIO.HUD_BLACK, 0.95);
+    g.fillRect(0, trayY, this.W, trayH);
+    // Brick border at top
+    g.fillStyle(MARIO.BRICK);
+    g.fillRect(0, trayY, this.W, 4);
+    // Brick pattern decoration
+    for (let bx = 0; bx < this.W; bx += 34) {
+      drawBrick(g, bx, trayY+4, 32, 8);
+    }
+
+    const prodW = 120, prodH = 105, prodGap = 14;
+    const totalPW = PRODUCTS.length * prodW + (PRODUCTS.length-1) * prodGap;
+    const startPX = (this.W - totalPW) / 2;
+
+    PRODUCTS.forEach((p, i) => {
+      const px = startPX + i * (prodW + prodGap);
+      const py = trayY + 38;
+      const card = this.add.container(px + prodW/2, py + prodH/2).setDepth(12);
+      const cardBg = this.add.graphics();
+      // ? block style product card
+      drawQuestionBlock(cardBg, -prodW/2, -prodH/2, prodW, prodH);
+      // Dark inner for contrast
+      cardBg.fillStyle(0x000000, 0.2);
+      cardBg.fillRect(-prodW/2+4, -prodH/2+4, prodW-8, prodH-8);
+      card.add(cardBg);
+      card.add(this.add.image(0, -18, 'e_' + p.eKey).setDisplaySize(48, 48));
+      card.add(this.add.text(0, 22, p.name, {
+        fontFamily: CN_FONT, fontSize: '20px', color: '#fcfcfc'
+      }).setOrigin(0.5));
+      card.setSize(prodW, prodH).setInteractive({ draggable: true });
+      const origX = px + prodW/2, origY = py + prodH/2;
+      card.on('dragstart', () => {
+        card.setDepth(100);
+        this.dragItem = { type: 'product', product: p, card, origX, origY };
+        this.tweens.add({ targets: card, scale: 1.12, duration: 100 });
+        this.highlightValidSeats(p.key);
+      });
+      card.on('drag', (ptr, dx, dy) => card.setPosition(dx, dy));
+      card.on('dragend', () => {
+        card.setDepth(12);
+        this.tweens.add({ targets: card, x: origX, y: origY, scale: 1, duration: 200, ease: 'Back.easeOut' });
+        this.clearSeatHighlights();
+        this.dragItem = null;
+      });
+    });
+  }
+
+  spawnToQueue() {
+    if (this.over || this.spawned >= this.waveConf.count) return;
+    if (this.queue.length >= 5) return;
+    const typeKey = Phaser.Utils.Array.GetRandom(this.waveConf.types);
+    const type = CUST_TYPES[typeKey];
+    this.spawned++;
+    const qIdx = this.queue.length;
+    const tx = this.queueStartX + qIdx * this.queueSpacing;
+
+    const avatar = this.add.container(-40, this.queueY).setDepth(15);
+    avatar.setSize(55, 55);
+    const bg = this.add.graphics();
+    // Pixel-style circle for customer avatar
+    bg.fillStyle(0xfcfcfc, 0.95); bg.fillCircle(0, 0, 26);
+    bg.lineStyle(3, typeKey === 'vip' ? 0xe67e22 : MARIO.PIPE_GREEN, 1); bg.strokeCircle(0, 0, 26);
+    avatar.add(bg);
+    const face = this.add.image(0, 0, 'e_' + type.eKey).setDisplaySize(38, 38);
+    avatar.add(face);
+    if (typeKey === 'vip') {
+      avatar.add(this.add.image(16, -18, 'e_crown').setDisplaySize(20, 20));
+    }
+    const barBgG = this.add.graphics();
+    barBgG.fillStyle(0x000000, 0.3); barBgG.fillRect(-20, 28, 40, 5);
+    avatar.add(barBgG);
+    const barFill = this.add.graphics();
+    barFill.fillStyle(MARIO.BAR_GREEN); barFill.fillRect(-20, 28, 40, 5);
+    avatar.add(barFill);
+
+    const custData = {
+      typeKey, type: {...type}, needs: [...type.needs], currentNeed: 0,
+      patience: type.patience * 1.5, maxPatience: type.patience * 1.5,
+      seatPatience: type.patience,
+      avatar, face, barFill, barBg: barBgG, inQueue: true
+    };
+
+    avatar.setInteractive({ draggable: true });
+    avatar.on('dragstart', () => {
+      avatar.setDepth(100);
+      this.dragItem = { type: 'customer', custData, origX: avatar.x, origY: avatar.y };
+      this.tweens.add({ targets: avatar, scale: 1.15, duration: 100 });
+      this.seatObjs.forEach(s => {
+        if (!s.cust) {
+          s.chair.clear();
+          // Highlight empty seat green (pipe glow)
+          s.chair.fillStyle(MARIO.PIPE_LIGHT, 0.98);
+          s.chair.fillRect(s.x, s.y, s.w, s.h);
+          s.chair.fillStyle(MARIO.PIPE_LIGHT, 0.5);
+          s.chair.fillRect(s.x-3, s.y, s.w+6, 10);
+          s.chair.lineStyle(3, MARIO.PIPE_GREEN, 1);
+          s.chair.strokeRect(s.x, s.y, s.w, s.h);
+        }
+      });
+    });
+    avatar.on('drag', (ptr, dx, dy) => avatar.setPosition(dx, dy));
+    avatar.on('dragend', () => {
+      avatar.setDepth(15);
+      if (custData.inQueue) {
+        this.tweens.add({ targets: avatar, x: this.dragItem.origX, y: this.dragItem.origY, scale: 1, duration: 200, ease: 'Back.easeOut' });
+      }
+      this.clearSeatHighlights();
+      this.dragItem = null;
+    });
+
+    this.queue.push(custData);
+    SFX.doorbell();
+    this.tweens.add({ targets: avatar, x: tx, duration: 500, ease: 'Back.easeOut' });
+  }
+
+  repositionQueue() {
+    this.queue.forEach((c, i) => {
+      if (c.inQueue && c.avatar) {
+        this.tweens.add({ targets: c.avatar, x: this.queueStartX + i * this.queueSpacing, duration: 300, ease: 'Power2' });
+      }
+    });
+  }
+
+  seatCustomer(custData, seatIdx) {
+    const seat = this.seatObjs[seatIdx];
+    if (seat.cust || !custData.inQueue) return;
+    SFX.step();
+    custData.inQueue = false;
+    this.queue = this.queue.filter(c => c !== custData);
+    this.repositionQueue();
+    if (custData.avatar) { custData.avatar.destroy(); custData.avatar = null; }
+
+    seat.emptyLabel.setVisible(false);
+    const cust = {
+      typeKey: custData.typeKey, ...custData.type,
+      needs: custData.needs, currentNeed: custData.currentNeed,
+      patience: custData.seatPatience, maxPatience: custData.seatPatience,
+    };
+    seat.cust = cust;
+
+    const face = E(this, seat.cx, seat.y+42, custData.type.eKey, 64).setDepth(7);
+    seat.face = face;
+    face.setScale(0);
+    this.tweens.add({ targets: face, scale: 1, duration: 400, ease: 'Back.easeOut' });
+    this.particles(seat.cx, seat.y + 50, 'sparkle', 3);
+
+    if (custData.typeKey === 'vip') {
+      seat.vipBadge = E(this, seat.cx+25, seat.y+28, 'crown', 30).setDepth(8);
+      this.tweens.add({ targets: seat.vipBadge, angle: { from: -8, to: 8 }, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    const barW = seat.w - 24, barY = seat.y + 100;
+    const barBg = this.add.graphics().setDepth(7);
+    barBg.fillStyle(0x000000, 0.2); barBg.fillRect(seat.x+12, barY, barW, 8);
+    seat.barBg = barBg;
+    const barFill = this.add.graphics().setDepth(7);
+    barFill.fillStyle(MARIO.BAR_GREEN); barFill.fillRect(seat.x+12, barY, barW, 8);
+    seat.barFill = barFill;
+    seat.barW = barW;
+    seat.barY = barY;
+    this.updateSeatNeeds(seatIdx);
+  }
+
+  handleProductDrop(product, seatIdx) {
+    const seat = this.seatObjs[seatIdx];
+    if (!seat.cust || seat.serving) return;
+    const nextNeed = seat.cust.needs[seat.cust.currentNeed];
+    if (product.key === nextNeed) {
+      this.applyProduct(seatIdx, product);
+    } else {
+      this.cameras.main.shake(120, 0.004);
+      this.tweens.add({ targets: seat.cont, x: 5, duration: 50, yoyo: true, repeat: 3, onComplete: () => seat.cont.x = 0 });
+      const flash = this.add.graphics().setDepth(20);
+      flash.fillStyle(MARIO.RED, 0.3); flash.fillRect(seat.x, seat.y, seat.w, seat.h);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 300, onComplete: () => flash.destroy() });
+    }
+  }
+
+  applyProduct(seatIdx, product) {
+    const seat = this.seatObjs[seatIdx];
+    seat.serving = true;
+    const progBg = this.add.graphics().setDepth(15);
+    progBg.fillStyle(0x000000, 0.2); progBg.fillRect(seat.x+12, seat.y+seat.h-22, seat.w-24, 12);
+    const progFill = this.add.graphics().setDepth(15);
+    const dur = 1500;
+    let elapsed = 0;
+    const prod = PRODUCTS.find(p => p.key === product.key);
+    this.particles(seat.cx, seat.y+70, prod.eKey, 3);
+    const ticker = this.time.addEvent({ delay: 40, loop: true, callback: () => {
+      elapsed += 40;
+      const pct = Math.min(elapsed/dur, 1);
+      progFill.clear(); progFill.fillStyle(prod.color);
+      progFill.fillRect(seat.x+12, seat.y+seat.h-22, (seat.w-24)*pct, 12);
+      if (pct >= 1) {
+        ticker.destroy(); progBg.destroy(); progFill.destroy();
+        seat.serving = false;
+        seat.cust.currentNeed++;
+        this.particles(seat.cx, seat.y+70, 'sparkle', 4);
+        this.updateSeatNeeds(seatIdx);
+        if (seat.cust.currentNeed >= seat.cust.needs.length) this.customerDone(seatIdx);
+      }
+    }});
+  }
+
+  highlightValidSeats(productKey) {
+    this.seatObjs.forEach(seat => {
+      if (!seat.cust || seat.serving) return;
+      if (seat.cust.needs[seat.cust.currentNeed] === productKey) {
+        seat.chair.clear();
+        // ? block highlight for valid product targets
+        seat.chair.fillStyle(MARIO.BLOCK_YELLOW, 0.95);
+        seat.chair.fillRect(seat.x, seat.y, seat.w, seat.h);
+        seat.chair.fillStyle(MARIO.BLOCK_YELLOW, 0.7);
+        seat.chair.fillRect(seat.x-3, seat.y, seat.w+6, 10);
+        seat.chair.lineStyle(3, MARIO.COIN_GOLD, 1);
+        seat.chair.strokeRect(seat.x, seat.y, seat.w, seat.h);
+      }
+    });
+  }
+
+  clearSeatHighlights() {
+    this.seatObjs.forEach(seat => {
+      seat.chair.clear();
+      // Restore pipe style
+      seat.chair.fillStyle(MARIO.PIPE_GREEN, 0.95);
+      seat.chair.fillRect(seat.x, seat.y, seat.w, seat.h);
+      seat.chair.fillStyle(MARIO.PIPE_LIGHT, 0.9);
+      seat.chair.fillRect(seat.x-3, seat.y, seat.w+6, 10);
+      seat.chair.fillStyle(0xfcfcfc, 0.15);
+      seat.chair.fillRect(seat.x, seat.y+10, 6, seat.h-10);
+      seat.chair.fillStyle(MARIO.PIPE_DARK, 0.3);
+      seat.chair.fillRect(seat.x+seat.w-6, seat.y+10, 6, seat.h-10);
+      const bc = seat.cust && seat.cust.patience / seat.cust.maxPatience < 0.3 ? MARIO.RED : MARIO.PIPE_DARK;
+      seat.chair.lineStyle(2, bc, 0.8);
+      seat.chair.strokeRect(seat.x, seat.y, seat.w, seat.h);
+    });
+  }
+
+  updateSeatNeeds(seatIdx) {
+    const seat = this.seatObjs[seatIdx];
+    const cust = seat.cust;
+    if (!cust) return;
+    seat.needsContainer.removeAll(true);
+    const needY = seat.y + 140;
+    const needs = cust.needs;
+    const stepSize = 38, stepGap = 10;
+    const totalNW = needs.length * stepSize + (needs.length-1) * stepGap;
+    const startX = seat.cx - totalNW/2;
+    needs.forEach((need, i) => {
+      const nx = startX + i * (stepSize + stepGap) + stepSize/2;
+      const prod = PRODUCTS.find(p => p.key === need);
+      const done = i < cust.currentNeed;
+      const current = i === cust.currentNeed;
+      const circle = this.add.graphics();
+      if (done) { circle.fillStyle(MARIO.PIPE_GREEN, 0.9); circle.fillCircle(0, 0, stepSize/2); }
+      else if (current) { circle.fillStyle(MARIO.BLOCK_YELLOW, 0.3); circle.fillCircle(0, 0, stepSize/2); circle.lineStyle(3, MARIO.COIN_GOLD, 1); circle.strokeCircle(0, 0, stepSize/2); }
+      else { circle.fillStyle(0x000000, 0.15); circle.fillCircle(0, 0, stepSize/2); }
+      const icon = done
+        ? this.add.image(0, 0, 'e_check').setDisplaySize(26, 26)
+        : this.add.image(0, 0, 'e_' + prod.eKey).setDisplaySize(30, 30);
+      const stepCont = this.add.container(nx, needY);
+      stepCont.add([circle, icon]);
+      seat.needsContainer.add(stepCont);
+      if (i < needs.length - 1) {
+        const arrow = this.add.text(nx + stepSize/2 + stepGap/2, needY, '>', { fontSize: '16px', fontFamily: PX_FONT, color: '#fcfcfc' }).setOrigin(0.5);
+        seat.needsContainer.add(arrow);
+      }
+      if (current) this.tweens.add({ targets: stepCont, scale: 1.2, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    });
+  }
+
+  customerDone(seatIdx) {
+    const seat = this.seatObjs[seatIdx];
+    this.served++;
+    this.coins += seat.cust.reward;
+    this.updateHUD();
+    SFX.coin();
+    this.particles(seat.cx, seat.y+50, 'money', 5);
+    this.particles(seat.cx, seat.y+30, 'heart_eyes', 2);
+    this.tweens.add({ targets: this.hudCoinC, scale: 1.3, duration: 120, yoyo: true });
+    const pop = T(this, seat.cx, seat.y+40, '+' + seat.cust.reward, { fontFamily: PX_FONT, fontSize: '24px', color: '#ffd700',
+      stroke: '#000000', strokeThickness: 3 }).setDepth(20);
+    const popIcon = E(this, seat.cx+30, seat.y+40, 'money', 26).setDepth(20);
+    this.tweens.add({ targets: [pop, popIcon], y: seat.y-10, alpha: 0, duration: 800, onComplete: () => { pop.destroy(); popIcon.destroy(); } });
+    // Show remaining customers notification
+    const remaining = this.waveConf.count - this.served - this.failed;
+    this.time.delayedCall(300, () => this.showRemainingBanner(remaining));
+    this.time.delayedCall(400, () => {
+      this.clearSeat(seatIdx);
+      this.checkWaveEnd();
+    });
+  }
+
+  showRemainingBanner(remaining) {
+    const W = GW;
+    const msg = remaining > 0 ? '還剩 ' + remaining + ' 位客人' : '全部完成！';
+    const bgColor = remaining > 0 ? 0x1a0010 : 0x4caf50;
+    const bg = this.add.graphics().setDepth(30);
+    bg.fillStyle(bgColor, 0.85);
+    bg.fillRoundedRect(W/2 - 120, 160, 240, 44, 8);
+    bg.fillStyle(0xffd54f, 1);
+    bg.fillRoundedRect(W/2 - 118, 162, 236, 40, 6);
+    bg.fillStyle(bgColor, 0.9);
+    bg.fillRoundedRect(W/2 - 116, 164, 232, 36, 5);
+    const txt = this.add.text(W/2, 182, msg, {
+      fontFamily: CN_FONT, fontSize: '16px', color: '#ffd54f',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(0.5).setDepth(31);
+    bg.setAlpha(0); txt.setAlpha(0);
+    this.tweens.add({ targets: [bg, txt], alpha: 1, duration: 200, yoyo: true, hold: 800,
+      onComplete: () => { bg.destroy(); txt.destroy(); }
+    });
+  }
+
+  customerFailedSeat(seatIdx) {
+    const seat = this.seatObjs[seatIdx];
+    this.failed++;
+    SFX.fail();
+    this.updateHUD();
+    this.particles(seat.cx, seat.y+50, 'anger', 3);
+    if (seat.face) seat.face.setTexture('e_angry_face').setDisplaySize(64, 64);
+    this.tweens.add({ targets: seat.face, alpha: 0, y: seat.y-20, duration: 500 });
+    this.time.delayedCall(500, () => {
+      this.clearSeat(seatIdx);
+      this.checkWaveEnd();
+    });
+  }
+
+  customerFailedQueue(custData) {
+    this.failed++;
+    SFX.fail();
+    this.updateHUD();
+    if (custData.avatar) {
+      this.particles(custData.avatar.x, custData.avatar.y, 'anger', 3);
+      if (custData.face) custData.face.setTexture('e_angry_face').setDisplaySize(38, 38);
+      this.tweens.add({ targets: custData.avatar, x: -60, alpha: 0, duration: 500, onComplete: () => { custData.avatar.destroy(); custData.avatar = null; }});
+    }
+    custData.inQueue = false;
+    this.queue = this.queue.filter(c => c !== custData);
+    this.repositionQueue();
+    this.checkWaveEnd();
+  }
+
+  checkWaveEnd() {
+    if (this.served + this.failed >= this.waveConf.count) {
+      this.time.delayedCall(600, () => this.endWave());
+    }
+  }
+
+  clearSeat(seatIdx) {
+    const seat = this.seatObjs[seatIdx];
+    seat.cust = null; seat.serving = false;
+    if (seat.face) { seat.face.destroy(); seat.face = null; }
+    if (seat.vipBadge) { seat.vipBadge.destroy(); seat.vipBadge = null; }
+    if (seat.barBg) { seat.barBg.destroy(); seat.barBg = null; }
+    if (seat.barFill) { seat.barFill.destroy(); seat.barFill = null; }
+    seat.needsContainer.removeAll(true);
+    seat.emptyLabel.setVisible(true);
+    seat.chair.clear();
+    // Restore pipe style
+    seat.chair.fillStyle(MARIO.PIPE_GREEN, 0.95);
+    seat.chair.fillRect(seat.x, seat.y, seat.w, seat.h);
+    seat.chair.fillStyle(MARIO.PIPE_LIGHT, 0.9);
+    seat.chair.fillRect(seat.x-3, seat.y, seat.w+6, 10);
+    seat.chair.fillStyle(0xfcfcfc, 0.15);
+    seat.chair.fillRect(seat.x, seat.y+10, 6, seat.h-10);
+    seat.chair.fillStyle(MARIO.PIPE_DARK, 0.3);
+    seat.chair.fillRect(seat.x+seat.w-6, seat.y+10, 6, seat.h-10);
+    seat.chair.lineStyle(2, MARIO.PIPE_DARK, 0.8);
+    seat.chair.strokeRect(seat.x, seat.y, seat.w, seat.h);
+  }
+
+  particles(x, y, eKey, count) {
+    for (let i = 0; i < count; i++) {
+      const size = Phaser.Math.Between(16, 28);
+      const p = E(this, x, y, eKey, size).setDepth(30);
+      this.tweens.add({ targets: p,
+        x: x+Phaser.Math.Between(-50,50), y: y+Phaser.Math.Between(-70,-15),
+        alpha: 0, scale: 0.2, duration: Phaser.Math.Between(500,900), ease: 'Power2',
+        onComplete: () => p.destroy() });
+    }
+  }
+
+  showTutorial() {
+    const ov = this.add.graphics().setDepth(100);
+    ov.fillStyle(0x000000, 0.85); ov.fillRect(0, 0, this.W, this.H);
+    const items = [];
+    const steps = [
+      { y: this.H*0.10, eKey: 'door', t: '客人在上方等候區排隊' },
+      { y: this.H*0.25, eKey: 'point_up', t: '拖客人到空座位' },
+      { y: this.H*0.40, eKey: 'lotion', t: '再從下方拖產品服務' },
+      { y: this.H*0.55, eKey: 'timer', t: '注意耐心條！' },
+    ];
+    steps.forEach((s, i) => {
+      const c = this.add.container(this.W/2, s.y).setDepth(101).setAlpha(0);
+      c.add(this.add.image(-100, 0, 'e_' + s.eKey).setDisplaySize(30, 30));
+      c.add(this.add.text(-70, 0, s.t, { fontFamily: CN_FONT, fontSize: '20px', color: '#fcfcfc',
+        stroke: '#000000', strokeThickness: 2 }).setOrigin(0, 0.5));
+      items.push(c);
+      this.tweens.add({ targets: c, alpha: 1, duration: 300, delay: i*400 });
+    });
+    const btn = this.add.graphics().setDepth(101);
+    drawQuestionBlock(btn, this.W/2-80, this.H*0.72, 160, 55);
+    const btnT = T(this, this.W/2, this.H*0.72+28, '開始！', { fontFamily: CN_FONT, fontSize: '24px',
+      stroke: '#000000', strokeThickness: 2 }).setDepth(101);
+    items.push(btn, btnT);
+    this.add.zone(this.W/2, this.H*0.72+28, 160, 55).setInteractive().setDepth(102).on('pointerdown', () => {
+      this.registry.set('tutDone', true);
+      items.forEach(i => this.tweens.add({ targets: i, alpha: 0, duration: 200 }));
+      this.tweens.add({ targets: ov, alpha: 0, duration: 200, onComplete: () => { ov.destroy(); items.forEach(i => { try{i.destroy()}catch(e){} }); }});
+    });
+  }
+
+  update(time, delta) {
+    if (this.over) return;
+    const dt = delta / 1000;
+
+    // Queue patience
+    this.queue.forEach(c => {
+      if (!c.inQueue) return;
+      c.patience -= dt * this.waveConf.speed;
+      const pct = Math.max(0, c.patience / c.maxPatience);
+      if (c.barFill) {
+        c.barFill.clear();
+        const col = pct > 0.5 ? MARIO.BAR_GREEN : pct > 0.25 ? MARIO.BLOCK_YELLOW : MARIO.RED;
+        c.barFill.fillStyle(col); c.barFill.fillRect(-20, 28, 40 * pct, 5);
+      }
+      if (pct < 0.25 && c.avatar) c.avatar.x += Math.sin(time/40) * 1;
+      if (c.patience <= 0) this.customerFailedQueue(c);
+    });
+
+    // Seated patience
+    this.seatObjs.forEach((seat, i) => {
+      if (!seat.cust || seat.serving) return;
+      seat.cust.patience -= dt * this.waveConf.speed;
+      const pct = Math.max(0, seat.cust.patience / seat.cust.maxPatience);
+      if (seat.barFill) {
+        seat.barFill.clear();
+        const col = pct > 0.5 ? MARIO.BAR_GREEN : pct > 0.25 ? MARIO.BLOCK_YELLOW : MARIO.RED;
+        seat.barFill.fillStyle(col); seat.barFill.fillRect(seat.x+12, seat.barY, seat.barW*pct, 8);
+      }
+      if (pct < 0.3) {
+        seat.chair.clear();
+        // Red warning pipe
+        seat.chair.fillStyle(MARIO.RED, 0.3);
+        seat.chair.fillRect(seat.x, seat.y, seat.w, seat.h);
+        seat.chair.fillStyle(MARIO.PIPE_GREEN, 0.7);
+        seat.chair.fillRect(seat.x, seat.y, seat.w, seat.h);
+        seat.chair.fillStyle(MARIO.PIPE_LIGHT, 0.5);
+        seat.chair.fillRect(seat.x-3, seat.y, seat.w+6, 10);
+        seat.chair.lineStyle(2, MARIO.RED, 1);
+        seat.chair.strokeRect(seat.x, seat.y, seat.w, seat.h);
+        if (seat.face) seat.face.x = seat.cx + Math.sin(time/40) * 2;
+      }
+      if (seat.cust.patience <= 0) this.customerFailedSeat(i);
+    });
+  }
+
+  endWave() {
+    if (this.over) return;
+    this.over = true;
+    if (this.spawner) this.spawner.destroy();
+
+    const save = loadSave();
+    save.coins = this.coins;
+    save.beds = this.beds;
+    if (this.wave > save.highWave) save.highWave = this.wave;
+    writeSave(save);
+
+    this.registry.set('totalCoins', this.coins);
+    this.registry.set('beds', this.beds);
+    this.registry.set('waveResults', {
+      wave: this.wave, served: this.served, failed: this.failed,
+      coins: this.coins, total: this.waveConf.count, beds: this.beds
+    });
+
+    const maxFail = this.waveConf.maxFail || Math.ceil(this.waveConf.count * 0.6);
+    if (this.failed > maxFail) {
+      this.registry.set('gameOver', true);
+    } else {
+      this.registry.set('gameOver', false);
+    }
+
+    SFX.bgmStop();
+    if (this.registry.get('gameOver')) SFX.gameOver(); else SFX.waveClear();
+
+    // Wave 4 cleared → award 10 game points
+    if (this.wave >= 4 && !this.registry.get('gameOver') && liffUser) {
+      awardGamePoints(liffUser.userId, 5);
+    }
+
+    // Wave 4 cleared (not game over) → Victory!
+    if (this.wave >= 4 && !this.registry.get('gameOver')) {
+      this.time.delayedCall(400, () => this.scene.start('Victory'));
+    } else {
+      this.time.delayedCall(400, () => this.scene.start('WaveResults'));
+    }
+  }
+}
+
+// ============================================================
+// WAVE RESULTS + UPGRADE SHOP — Mario style
+// ============================================================
+class WaveResultsScene extends Phaser.Scene {
+  constructor() { super('WaveResults'); }
+  create() {
+    const W = GW, H = GH;
+    const r = this.registry.get('waveResults') || {};
+    const isGameOver = this.registry.get('gameOver');
+    const beds = this.registry.get('beds') || 1;
+
+    const bg = this.add.graphics();
+    if (isGameOver) {
+      // Dark brick underground style
+      bg.fillStyle(MARIO.BRICK_DARK);
+      bg.fillRect(0, 0, W, H);
+      // Brick pattern overlay
+      for (let bx = 0; bx < W; bx += 32) {
+        for (let by = 0; by < H; by += 16) {
+          bg.lineStyle(1, 0x000000, 0.3);
+          bg.strokeRect(bx, by, 32, 16);
+        }
+      }
+    } else {
+      // Sky background with ground
+      bg.fillStyle(MARIO.SKY);
+      bg.fillRect(0, 0, W, H);
+      drawCloud(bg, 80, 40, 2);
+      drawCloud(bg, 380, 60, 1.5);
+      drawCloud(bg, 220, 30, 1);
+      // Ground at bottom
+      bg.fillStyle(MARIO.GROUND);
+      bg.fillRect(0, H-80, W, 10);
+      bg.fillStyle(MARIO.BRICK);
+      bg.fillRect(0, H-70, W, 70);
+      for (let bx = 0; bx < W; bx += 32) {
+        for (let by = H-70; by < H; by += 16) {
+          bg.lineStyle(1, MARIO.BRICK_DARK, 0.3);
+          bg.strokeRect(bx, by, 32, 16);
+        }
+      }
+    }
+
+    const titleShadow = { offsetY: 3, color: '#000000', blur: 0, fill: true };
+    if (isGameOver) {
+      T(this, W/2, 55, '遊戲結束', { fontFamily: CN_FONT, fontSize: '32px', shadow: titleShadow,
+        stroke: '#000000', strokeThickness: 4 });
+    } else {
+      const titleC = this.add.container(W/2, 55);
+      titleC.add(this.add.image(-100, 0, 'e_wave_i').setDisplaySize(44, 44));
+      titleC.add(this.add.text(0, 0, '第 ' + r.wave + ' 波完成！', {
+        fontFamily: CN_FONT, fontSize: '28px', color: '#fcfcfc',
+        shadow: titleShadow, stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5));
+    }
+
+    const ratio = r.served / r.total;
+    const stars = ratio >= 0.9 ? 3 : ratio >= 0.7 ? 2 : ratio >= 0.5 ? 1 : 0;
+    for (let i = 0; i < 3; i++) {
+      const s = i < stars
+        ? this.add.image(W/2-75+i*75, 115, 'e_star_full').setDisplaySize(60, 60).setScale(0)
+        : this.add.text(W/2-75+i*75, 115, '\u2606', { fontSize: '44px', fontFamily: PX_FONT, color: '#555' }).setOrigin(0.5).setScale(0);
+      this.tweens.add({ targets: s, scale: 1, duration: 350, delay: 200+i*200, ease: 'Back.easeOut' });
+    }
+
+    // Stats (brick block containers)
+    const sy = 185;
+    const statItems = [
+      { eKey: 'person', l: '服務', v: r.served+'/'+r.total, c: '#fcfcfc' },
+      { eKey: 'angry_face', l: '流失', v: r.failed+'', c: r.failed>0?'#fc1820':'#fcfcfc' },
+      { eKey: 'money', l: '金幣', v: r.coins+'', c: '#ffd700' },
+      { eKey: 'bed', l: '美容床', v: beds+' / 4', c: '#fcfcfc' },
+    ];
+    statItems.forEach((s, idx) => {
+      const y = sy + idx * 56;
+      const g = this.add.graphics();
+      drawBrick(g, 25, y, W-50, 48);
+      g.fillStyle(0x000000, 0.4);
+      g.fillRect(27, y+2, W-54, 44);
+      E(this, 58, y+24, s.eKey, 30);
+      T(this, 92, y+24, s.l, { fontFamily: CN_FONT, fontSize: '18px', color: '#fcfcfc' }).setOrigin(0, 0.5);
+      T(this, W-45, y+24, s.v, { fontFamily: PX_FONT, fontSize: '22px', color: s.c,
+        shadow: { offsetY: 1, color: '#000000', blur: 0, fill: true } }).setOrigin(1, 0.5);
+    });
+
+    // Tip (? block style)
+    const ty = sy + 4*56 + 15;
+    const tg = this.add.graphics();
+    drawQuestionBlock(tg, 25, ty, W-50, 70);
+    tg.fillStyle(0x000000, 0.3);
+    tg.fillRect(29, ty+4, W-58, 62);
+    const tipC = this.add.container(W/2, ty+18);
+    tipC.add(this.add.image(-55, 0, 'e_dna').setDisplaySize(26, 26));
+    tipC.add(this.add.text(0, 0, 'DAWA 知識', {
+      fontFamily: CN_FONT, fontSize: '18px', color: '#fcfcfc'
+    }).setOrigin(0.5));
+    T(this, W/2, ty+48, TIPS[(r.wave-1) % TIPS.length], { fontFamily: CN_FONT, fontSize: '14px', color: '#fcfcfc', wordWrap: { width: W-80 },
+      shadow: { offsetY: 1, color: '#000000', blur: 0, fill: true } });
+
+    // UPGRADE SECTION
+    const uy = ty + 85;
+    if (!isGameOver && beds < 4) {
+      const nextBedCost = BED_COSTS[beds];
+      const canAfford = r.coins >= nextBedCost;
+
+      const upgradeTitle = this.add.container(W/2, uy);
+      upgradeTitle.add(this.add.image(-65, 0, 'e_wrench').setDisplaySize(30, 30));
+      upgradeTitle.add(this.add.text(0, 0, '升級商店', {
+        fontFamily: CN_FONT, fontSize: '22px', color: '#fcfcfc',
+        shadow: titleShadow, stroke: '#000000', strokeThickness: 2
+      }).setOrigin(0.5));
+
+      const ubg = this.add.graphics();
+      if (canAfford) {
+        drawQuestionBlock(ubg, 25, uy+22, W-50, 80);
+        ubg.fillStyle(0x000000, 0.2);
+        ubg.fillRect(29, uy+26, W-58, 72);
+      } else {
+        drawBrick(ubg, 25, uy+22, W-50, 80);
+        ubg.fillStyle(0x000000, 0.4);
+        ubg.fillRect(29, uy+26, W-58, 72);
+      }
+
+      E(this, 58, uy+62, 'bed', 38);
+      T(this, 95, uy+50, '增加美容床', { fontFamily: CN_FONT, fontSize: '18px' }).setOrigin(0, 0.5);
+      T(this, 95, uy+74, beds + ' > ' + (beds+1) + ' 張', { fontFamily: CN_FONT, fontSize: '14px', color: '#fcfcfc' }).setOrigin(0, 0.5);
+      const costColor = canAfford ? '#ffd700' : '#fc1820';
+      const costText = this.add.text(0, 0, '' + nextBedCost, {
+        fontFamily: PX_FONT, fontSize: '20px', color: costColor,
+        shadow: { offsetY: 1, color: '#000000', blur: 0, fill: true }
+      }).setOrigin(0, 0.5);
+      const costTextW = costText.width;
+      const costC = this.add.container(W-45-costTextW, uy+62);
+      costC.add(this.add.image(-18, 0, 'e_money').setDisplaySize(24, 24));
+      costC.add(costText);
+
+      if (canAfford) {
+        this.add.zone(W/2, uy+62, W-50, 80).setInteractive().on('pointerdown', () => {
+          SFX.upgrade();
+          const newCoins = r.coins - nextBedCost;
+          const newBeds = beds + 1;
+          this.registry.set('totalCoins', newCoins);
+          this.registry.set('beds', newBeds);
+          const save = loadSave();
+          save.coins = newCoins; save.beds = newBeds;
+          writeSave(save);
+          this.registry.set('waveResults', { ...r, coins: newCoins });
+          this.scene.restart();
+        });
+      }
+    } else if (!isGameOver) {
+      const maxC = this.add.container(W/2, uy+20);
+      maxC.add(this.add.image(-70, 0, 'e_bed').setDisplaySize(30, 30));
+      maxC.add(this.add.text(0, 0, '美容床已滿級！', { fontFamily: CN_FONT, fontSize: '20px', color: '#fcfcfc' }).setOrigin(0.5));
+    }
+
+    // Buttons
+    const by = H - 140;
+    if (!isGameOver && r.wave < 4) {
+      const ng = this.add.graphics();
+      drawQuestionBlock(ng, 25, by, W-50, 62);
+      const nextC = this.add.container(W/2, by+31);
+      nextC.add(this.add.image(-50, 0, 'e_play').setDisplaySize(30, 30));
+      nextC.add(this.add.text(0, 0, '下一波', {
+        fontFamily: CN_FONT, fontSize: '24px', color: '#fcfcfc',
+        shadow: { offsetY: 2, color: '#000000', blur: 0, fill: true },
+        stroke: '#000000', strokeThickness: 2
+      }).setOrigin(0.5));
+      this.add.zone(W/2, by+31, W-50, 62).setInteractive().on('pointerdown', () => {
+        this.registry.set('wave', r.wave + 1);
+        this.scene.start('Game');
+      });
+    }
+
+    const my = isGameOver ? by : by + 72;
+    if (isGameOver) {
+      const rg = this.add.graphics();
+      drawBrick(rg, 25, my, W/2-30, 58);
+      const restartC = this.add.container(W/4+10, my+29);
+      restartC.add(this.add.image(-50, 0, 'e_refresh').setDisplaySize(26, 26));
+      restartC.add(this.add.text(0, 0, '重新開始', { fontFamily: CN_FONT, fontSize: '16px', color: '#fcfcfc' }).setOrigin(0.5));
+      this.add.zone(W/4+10, my+29, W/2-30, 58).setInteractive().on('pointerdown', () => {
+        const save = loadSave();
+        this.registry.set('wave', 1);
+        this.registry.set('totalCoins', save.coins);
+        this.scene.start('Game');
+      });
+
+      const hg = this.add.graphics();
+      drawBrick(hg, W/2+5, my, W/2-30, 58);
+      hg.fillStyle(0x000000, 0.3);
+      hg.fillRect(W/2+7, my+2, W/2-34, 54);
+      const homeC = this.add.container(W*3/4-5, my+29);
+      homeC.add(this.add.image(-35, 0, 'e_house').setDisplaySize(26, 26));
+      homeC.add(this.add.text(0, 0, '選單', { fontFamily: CN_FONT, fontSize: '16px', color: '#fcfcfc' }).setOrigin(0.5));
+      this.add.zone(W*3/4-5, my+29, W/2-30, 58).setInteractive().on('pointerdown', () => this.scene.start('Menu'));
+    } else {
+      const hg = this.add.graphics();
+      drawBrick(hg, W/2-70, my, 140, 48);
+      hg.fillStyle(0x000000, 0.3);
+      hg.fillRect(W/2-68, my+2, 136, 44);
+      const homeC = this.add.container(W/2, my+24);
+      homeC.add(this.add.image(-35, 0, 'e_house').setDisplaySize(26, 26));
+      homeC.add(this.add.text(0, 0, '選單', { fontFamily: CN_FONT, fontSize: '16px', color: '#fcfcfc' }).setOrigin(0.5));
+      this.add.zone(W/2, my+24, 140, 48).setInteractive().on('pointerdown', () => this.scene.start('Menu'));
+    }
+  }
+}
+
+// ============================================================
+// ============================================================
+// VICTORY SCENE — Financial Freedom Celebration
+// ============================================================
+class VictoryScene extends Phaser.Scene {
+  constructor() { super('Victory'); }
+  create() {
+    const W = GW, H = GH;
+    const r = this.registry.get('waveResults') || {};
+
+    // Golden gradient background
+    const bg = this.add.graphics();
+    bg.fillStyle(0xfff8e1); bg.fillRect(0, 0, W, H);
+    bg.fillStyle(0xffe082, 0.5); bg.fillRect(0, H*0.3, W, H*0.4);
+    bg.fillStyle(MARIO.GROUND); bg.fillRect(0, H-60, W, 60);
+
+    // Sparkle particles
+    for (let i = 0; i < 30; i++) {
+      const sx = Phaser.Math.Between(20, W-20);
+      const sy = Phaser.Math.Between(50, H-100);
+      const star = this.add.image(sx, sy, 'e_sparkle').setDisplaySize(20, 20).setAlpha(0);
+      this.tweens.add({
+        targets: star, alpha: { from: 0, to: 0.8 }, scale: { from: 0.3, to: 1.2 },
+        duration: Phaser.Math.Between(600, 1200), delay: Phaser.Math.Between(0, 2000),
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+      });
+    }
+
+    // Trophy / crown
+    const crown = this.add.image(W/2, 120, 'e_princess').setDisplaySize(80, 80).setScale(0);
+    this.tweens.add({ targets: crown, scale: 1, duration: 600, ease: 'Back.easeOut', delay: 300 });
+
+    // Confetti emojis falling
+    const confettiKeys = ['heart_eyes', 'sparkle', 'star_full', 'money'];
+    for (let i = 0; i < 15; i++) {
+      const ck = confettiKeys[i % confettiKeys.length];
+      const cx = Phaser.Math.Between(30, W-30);
+      const cf = this.add.image(cx, -40, 'e_' + ck).setDisplaySize(28, 28);
+      this.tweens.add({
+        targets: cf, y: H + 40, x: cx + Phaser.Math.Between(-60, 60),
+        angle: Phaser.Math.Between(-180, 180),
+        duration: Phaser.Math.Between(2500, 4500), delay: Phaser.Math.Between(0, 3000),
+        repeat: -1, ease: 'Sine.easeIn'
+      });
+    }
+
+    // Main title
+    const shadow = { offsetY: 4, color: '#000000', blur: 0, fill: true };
+    T(this, W/2, 210, '恭喜破關！', {
+      fontFamily: CN_FONT, fontSize: '40px', color: '#e91e63',
+      shadow, stroke: '#000000', strokeThickness: 4
+    });
+
+    T(this, W/2, 270, '財富自由達成', {
+      fontFamily: CN_FONT, fontSize: '32px', color: '#ffd700',
+      shadow, stroke: '#000000', strokeThickness: 3
+    });
+
+    // Subtitle message
+    T(this, W/2, 330, '你已經成為頂尖美麗人生贏家！', {
+      fontFamily: CN_FONT, fontSize: '18px', color: '#333',
+    });
+
+    // Stats summary
+    const sy = 390;
+    const statBg = this.add.graphics();
+    statBg.fillStyle(0x000000, 0.6);
+    statBg.fillRoundedRect(40, sy, W-80, 130, 10);
+    statBg.lineStyle(3, 0xffd700);
+    statBg.strokeRoundedRect(40, sy, W-80, 130, 10);
+
+    T(this, W/2, sy+25, '最終成績', { fontFamily: CN_FONT, fontSize: '20px', color: '#ffd700' });
+
+    const statsData = [
+      { icon: 'money', label: '總金幣', value: '' + r.coins },
+      { icon: 'person', label: '服務客人', value: r.served + '/' + r.total },
+      { icon: 'bed', label: '美容床', value: (this.registry.get('beds') || 1) + ' 張' },
+    ];
+    statsData.forEach((s, i) => {
+      const row = sy + 55 + i * 28;
+      E(this, 80, row, s.icon, 22);
+      T(this, 105, row, s.label, { fontFamily: CN_FONT, fontSize: '14px', color: '#fff' }).setOrigin(0, 0.5);
+      T(this, W-80, row, s.value, { fontFamily: PX_FONT, fontSize: '16px', color: '#ffd700' }).setOrigin(1, 0.5);
+    });
+
+    // Motivational message
+    T(this, W/2, 560, '美麗事業，從 DAWA 開始', {
+      fontFamily: CN_FONT, fontSize: '16px', color: '#e91e63',
+      stroke: '#fff', strokeThickness: 2
+    });
+
+    // Buttons
+    const btnY = 630;
+    // Play again button
+    const pg = this.add.graphics();
+    drawQuestionBlock(pg, 25, btnY, W/2-35, 60);
+    const playC = this.add.container(W/4+10, btnY+30);
+    playC.add(this.add.image(-45, 0, 'e_refresh').setDisplaySize(26, 26));
+    playC.add(this.add.text(0, 0, '再玩一次', { fontFamily: CN_FONT, fontSize: '16px', color: '#fcfcfc' }).setOrigin(0.5));
+    this.add.zone(W/4+10, btnY+30, W/2-35, 60).setInteractive().on('pointerdown', () => {
+      SFX.click();
+      this.registry.set('wave', 1);
+      const save = loadSave();
+      this.registry.set('totalCoins', save.coins);
+      this.scene.start('Game');
+    });
+
+    // Menu button
+    const hg = this.add.graphics();
+    drawBrick(hg, W/2+10, btnY, W/2-35, 60);
+    hg.fillStyle(0x000000, 0.3); hg.fillRect(W/2+12, btnY+2, W/2-39, 56);
+    const homeC = this.add.container(W*3/4-5, btnY+30);
+    homeC.add(this.add.image(-35, 0, 'e_house').setDisplaySize(26, 26));
+    homeC.add(this.add.text(0, 0, '選單', { fontFamily: CN_FONT, fontSize: '16px', color: '#fcfcfc' }).setOrigin(0.5));
+    this.add.zone(W*3/4-5, btnY+30, W/2-35, 60).setInteractive().on('pointerdown', () => {
+      SFX.click();
+      this.scene.start('Menu');
+    });
+
+    // Footer
+    T(this, W/2, H-30, 'by DAWA 保泌精華', { fontFamily: CN_FONT, fontSize: '12px', color: 'rgba(255,255,255,0.5)' });
+
+    // Play victory fanfare
+    SFX.waveClear();
+  }
+}
+
+new Phaser.Game({
+  type: Phaser.AUTO, parent: document.body,
+  width: GW, height: GH, backgroundColor: '#5c94fc',
+  pixelArt: true, roundPixels: true,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [BootScene, MenuScene, GameScene, WaveResultsScene, VictoryScene],
+});
+</script>
+</body>
+</html>

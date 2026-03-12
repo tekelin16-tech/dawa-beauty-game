@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dawa美麗人生</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:#fce4ec;
+  min-height:100dvh;
+  font-family:'Press Start 2P',-apple-system,sans-serif;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-user-select:none;user-select:none;
+}
+.scene{
+  position:relative;
+  width:100%;max-width:500px;height:100dvh;
+  overflow:hidden;
+}
+/* Sky */
+.sky{position:absolute;top:0;left:0;right:0;bottom:0;background:#fce4ec}
+/* Clouds */
+.cloud{position:absolute;background:#f8f8f8;border-radius:50%}
+.cloud::before,.cloud::after{content:'';position:absolute;background:#f8f8f8;border-radius:50%}
+.c1{width:80px;height:30px;top:8%;left:10%}.c1::before{width:40px;height:30px;top:-15px;left:12px}.c1::after{width:50px;height:25px;top:-10px;left:30px}
+.c2{width:60px;height:22px;top:15%;right:15%}.c2::before{width:30px;height:22px;top:-12px;left:8px}.c2::after{width:38px;height:18px;top:-8px;left:20px}
+.c3{width:70px;height:26px;top:6%;left:55%}.c3::before{width:35px;height:24px;top:-13px;left:10px}.c3::after{width:42px;height:20px;top:-9px;left:25px}
+/* Ground */
+.ground{
+  position:absolute;bottom:0;left:0;right:0;height:120px;
+  background:
+    repeating-linear-gradient(90deg,#d4618c 0px,#d4618c 24px,#b04070 24px,#b04070 25px),
+    linear-gradient(to bottom,#f48fb1 0px,#f48fb1 8px,#d4618c 8px);
+  image-rendering:pixelated;
+}
+/* Hills */
+.hill{position:absolute;bottom:120px;border-radius:50% 50% 0 0;background:#f48fb1}
+.hill1{width:200px;height:60px;left:-30px}
+.hill2{width:140px;height:40px;right:20px}
+/* ? Blocks */
+.qblock{
+  position:absolute;width:40px;height:40px;
+  background:#f8bbd0;
+  border:3px solid #000;
+  border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;color:#000;font-weight:bold;
+  box-shadow:inset -3px -3px 0 #e48aab,inset 3px 3px 0 #fce4ec;
+  image-rendering:pixelated;
+}
+.q1{top:55%;left:12%}.q2{top:48%;right:18%}.q3{top:60%;left:55%}
+/* Brick blocks */
+.brick{
+  position:absolute;width:40px;height:40px;
+  background:#d4618c;
+  border:2px solid #000;
+  border-radius:2px;
+  box-shadow:inset -2px -2px 0 #b04070,inset 2px 2px 0 #f0a0b8;
+  image-rendering:pixelated;
+}
+.b1{top:55%;left:calc(12% + 42px)}.b2{top:55%;left:calc(12% + 84px)}
+.b3{top:48%;right:calc(18% + 42px)}
+/* Content */
+.content{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:10;
+  padding:20px;
+}
+.title{
+  color:#e91e63;
+  font-size:42px;
+  text-shadow:3px 3px 0 #000, -1px -1px 0 #000;
+  margin-bottom:10px;
+  text-align:center;
+  line-height:1.4;
+}
+.subtitle{
+  color:#fff;
+  font-size:22px;
+  text-shadow:2px 2px 0 #c2185b;
+  margin-bottom:40px;
+  letter-spacing:6px;
+  font-family:-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif;
+}
+/* Emoji row */
+.emoji-row{
+  display:flex;gap:12px;margin-bottom:35px;
+}
+.emoji-row span{
+  font-size:32px;
+  animation:bounce 1.2s ease-in-out infinite;
+  font-family:sans-serif;
+}
+.emoji-row span:nth-child(2){animation-delay:0.1s}
+.emoji-row span:nth-child(3){animation-delay:0.2s}
+.emoji-row span:nth-child(4){animation-delay:0.3s}
+.emoji-row span:nth-child(5){animation-delay:0.4s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+/* Buttons */
+.btn{
+  display:block;width:280px;
+  padding:18px 20px;
+  margin-bottom:16px;
+  border:4px solid #000;
+  border-radius:4px;
+  font-family:'Press Start 2P',monospace;
+  font-size:14px;
+  cursor:pointer;
+  text-align:center;
+  text-decoration:none;
+  image-rendering:pixelated;
+  transition:transform 0.1s;
+}
+.btn:active{transform:scale(0.96)}
+.btn-play{
+  background:#f8bbd0;
+  color:#000;
+  box-shadow:inset -4px -4px 0 #e48aab,inset 4px 4px 0 #fce4ec;
+}
+.btn-play:hover{background:#fce4ec}
+.btn-line{
+  background:#06c755;
+  color:#fff;
+  box-shadow:inset -4px -4px 0 #05a045,inset 4px 4px 0 #2edf75;
+}
+.btn-line:hover{background:#2edf75}
+/* User info */
+.user-info{
+  background:rgba(0,0,0,0.6);
+  border:3px solid #06c755;
+  border-radius:4px;
+  padding:12px 20px;
+  margin-bottom:16px;
+  color:#fff;
+  font-size:10px;
+  text-align:center;
+  width:280px;
+}
+.user-info .name{color:#06c755;font-size:12px;margin-bottom:4px}
+.user-info .cloud{color:#aaa;font-size:8px}
+.note{
+  color:rgba(255,255,255,0.5);
+  font-size:8px;
+  margin-top:8px;
+  text-align:center;
+  line-height:1.8;
+}
+.footer{
+  position:absolute;bottom:130px;left:0;right:0;
+  text-align:center;
+  color:rgba(255,255,255,0.3);
+  font-size:7px;
+  z-index:10;
+}
+/* Coin animation */
+.coin{
+  position:absolute;font-size:24px;font-family:sans-serif;
+  animation:coin-float 3s ease-in-out infinite;
+}
+.coin1{top:30%;left:8%;animation-delay:0s}
+.coin2{top:25%;right:10%;animation-delay:1s}
+.coin3{top:40%;left:75%;animation-delay:0.5s}
+@keyframes coin-float{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-15px) rotate(10deg)}}
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="sky"></div>
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+  <div class="hill hill1"></div>
+  <div class="hill hill2"></div>
+  <div class="qblock q1">?</div>
+  <div class="qblock q2">?</div>
+  <div class="qblock q3">?</div>
+  <div class="brick b1"></div>
+  <div class="brick b2"></div>
+  <div class="brick b3"></div>
+  <div class="coin coin1">🪙</div>
+  <div class="coin coin2">🪙</div>
+  <div class="coin coin3">🪙</div>
+  <div class="ground"></div>
+
+  <div class="content">
+    <div class="title">Dawa</div>
+    <div class="subtitle">美 麗 人 生</div>
+    <div class="emoji-row">
+      <span>🧴</span><span>💆‍♀️</span><span>🧬</span><span>💧</span><span>✨</span>
+    </div>
+
+    <div id="userInfo" class="user-info" style="display:none">
+      <div class="name" id="userName"></div>
+      <div class="cloud">☁️ 雲端同步中</div>
+    </div>
+
+    <a class="btn btn-line" id="btnLine" href="#" onclick="doLineLogin()">📱 LINE 登入開始玩</a>
+    <a class="btn btn-play" id="btnPlay" href="#" onclick="playAsGuest()">🕹️ 訪客模式</a>
+
+    <div class="note">
+      LINE 登入可存檔 + 累積遊戲點數<br>
+      訪客模式不累積點數喔！
+    </div>
+  </div>
+
+  <div class="footer">by DAWA 保泌精華</div>
+</div>
+
+<script>
+const LIFF_ID = '2009120543-DR5lyiB2';
+const LIFF_URL = 'https://liff.line.me/' + LIFF_ID;
+
+async function initLIFF() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (liff.isLoggedIn()) {
+      // Already logged in — show user info and direct play button
+      const profile = await liff.getProfile();
+      document.getElementById('userInfo').style.display = 'block';
+      document.getElementById('userName').textContent = '✅ ' + profile.displayName;
+      document.getElementById('btnLine').textContent = '🎮 開始遊戲';
+      document.getElementById('btnLine').onclick = function() { window.location.href = 'game.html'; };
+    }
+  } catch (e) {
+    console.warn('LIFF init error:', e);
+  }
+}
+
+function doLineLogin() {
+  // Redirect to LIFF URL directly (avoids 400 error from domain mismatch)
+  window.location.href = LIFF_URL;
+}
+
+function playAsGuest() {
+  if (confirm('訪客模式不會累積遊戲點數喔！\n\n建議使用 LINE 登入來累積點數。\n\n確定要以訪客身份進入嗎？')) {
+    window.location.href = 'game.html';
+  }
+}
+
+initLIFF();
+</script>
+</body>
+</html>
