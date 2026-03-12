@@ -464,6 +464,7 @@ body {
 .badge.skin-badge { background: #fce4ec; color: #c2185b; }
 .badge.love-badge { background: #f3e5f5; color: #7b1fa2; }
 .badge.total-badge { background: #e91e63; color: #fff; font-size: 13px; padding: 4px 10px; }
+.badge.pts-badge { background: #fff8e1; color: #f57f17; font-size: 11px; font-weight: 700; }
 .history-header .arrow {
   font-size: 12px;
   color: #ccc;
@@ -1521,6 +1522,7 @@ async function loadHistory() {
               (entry.skin_score > 0 ? '<span class="badge skin-badge">膚' + entry.skin_score + '</span>' : '') +
               (entry.love_score > 0 ? '<span class="badge love-badge">愛' + entry.love_score + '</span>' : '') +
               '<span class="badge total-badge">' + entry.total_score + '</span>' +
+              '<span class="badge pts-badge">+5 點</span>' +
             '</span>' +
             '<span class="arrow">▶</span>' +
           '</div>';
