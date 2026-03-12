@@ -167,6 +167,60 @@ body {
 .love-textarea:focus { border-color: #e91e63; }
 .love-textarea::placeholder { color: #e091ab; }
 
+/* 333 Diary */
+.diary-section {
+  margin-bottom: 16px;
+}
+.diary-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.diary-section-title.grateful { color: #e91e63; }
+.diary-section-title.good { color: #9c27b0; }
+.diary-section-title.grow { color: #1565c0; }
+.diary-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.diary-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.diary-num.grateful { background: #e91e63; }
+.diary-num.good { background: #9c27b0; }
+.diary-num.grow { background: #1565c0; }
+.diary-input {
+  flex: 1;
+  border: 2px solid #f48fb1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.3s;
+  background: rgba(255,255,255,0.6);
+}
+.diary-input:focus { border-color: #e91e63; }
+.diary-input::placeholder { color: #e091ab; font-size: 13px; }
+.diary-input.good-input { border-color: #ce93d8; }
+.diary-input.good-input:focus { border-color: #9c27b0; }
+.diary-input.grow-input { border-color: #90caf9; }
+.diary-input.grow-input:focus { border-color: #1565c0; }
+
 /* Results */
 .result-section { display: none; }
 .score-row {
@@ -494,11 +548,59 @@ body {
     <button class="tab-btn" onclick="switchTab('history')">過去紀錄</button>
   </div>
 
-  <!-- Diary Tab (愛自己) -->
+  <!-- Diary Tab (333日記) -->
   <div id="diaryTab">
     <div class="card">
-      <div class="card-title"><span class="icon">&#x1f497;</span> 今日愛自己紀錄</div>
-      <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;例如：敷了面膜、做了運動、早睡了..."></textarea>
+      <div class="card-title"><span class="icon">&#x1f497;</span> 333 愛自己日記</div>
+
+      <div class="diary-section">
+        <div class="diary-section-title grateful">🙏 3 個今天感恩的事</div>
+        <div class="diary-input-row">
+          <span class="diary-num grateful">1</span>
+          <input class="diary-input" id="grateful1" placeholder="例如：家人的陪伴很溫暖">
+        </div>
+        <div class="diary-input-row">
+          <span class="diary-num grateful">2</span>
+          <input class="diary-input" id="grateful2" placeholder="例如：吃到好吃的早餐">
+        </div>
+        <div class="diary-input-row">
+          <span class="diary-num grateful">3</span>
+          <input class="diary-input" id="grateful3" placeholder="例如：天氣很好心情舒服">
+        </div>
+      </div>
+
+      <div class="diary-section">
+        <div class="diary-section-title good">💪 3 個今天做得不錯的事</div>
+        <div class="diary-input-row">
+          <span class="diary-num good">1</span>
+          <input class="diary-input good-input" id="good1" placeholder="例如：準時完成工作">
+        </div>
+        <div class="diary-input-row">
+          <span class="diary-num good">2</span>
+          <input class="diary-input good-input" id="good2" placeholder="例如：做了30分鐘運動">
+        </div>
+        <div class="diary-input-row">
+          <span class="diary-num good">3</span>
+          <input class="diary-input good-input" id="good3" placeholder="例如：對自己說了鼓勵的話">
+        </div>
+      </div>
+
+      <div class="diary-section">
+        <div class="diary-section-title grow">🌱 3 個生命可以更好的事</div>
+        <div class="diary-input-row">
+          <span class="diary-num grow">1</span>
+          <input class="diary-input grow-input" id="grow1" placeholder="例如：想要早一點睡覺">
+        </div>
+        <div class="diary-input-row">
+          <span class="diary-num grow">2</span>
+          <input class="diary-input grow-input" id="grow2" placeholder="例如：多喝水保持水潤">
+        </div>
+        <div class="diary-input-row">
+          <span class="diary-num grow">3</span>
+          <input class="diary-input grow-input" id="grow3" placeholder="例如：少看手機多看書">
+        </div>
+      </div>
+
       <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
         &#x1f31f; AI 溫暖回饋
       </button>
@@ -914,11 +1016,23 @@ async function analyzeSkin() {
   hideLoading();
 }
 
+// ── Collect 333 diary text ──
+function collect333() {
+  const g = [1,2,3].map(i => document.getElementById('grateful'+i).value.trim()).filter(Boolean);
+  const d = [1,2,3].map(i => document.getElementById('good'+i).value.trim()).filter(Boolean);
+  const r = [1,2,3].map(i => document.getElementById('grow'+i).value.trim()).filter(Boolean);
+  let text = '';
+  if (g.length) text += '【感恩的事】\n' + g.map((v,i) => (i+1)+'. '+v).join('\n') + '\n';
+  if (d.length) text += '【做得不錯的事】\n' + d.map((v,i) => (i+1)+'. '+v).join('\n') + '\n';
+  if (r.length) text += '【可以更好的事】\n' + r.map((v,i) => (i+1)+'. '+v).join('\n');
+  return text.trim();
+}
+
 // ── Analyze love ──
 async function analyzeLove() {
-  const text = document.getElementById('loveText').value.trim();
+  const text = collect333();
   if (!text) {
-    showToast('請先寫下今天愛自己做的事');
+    showToast('請至少填寫一項日記內容');
     return;
   }
   showLoading('AI 正在給予溫暖回饋...', loveSteps);
@@ -1031,7 +1145,7 @@ async function saveDiary() {
       skinPhotoBase64: photoBase64 || '',  // full original for beauticians
       skinScore: skinResult ? skinResult.score : 0,
       skinAnalysis: skinResult ? formatSkinReport(skinResult) : '',
-      loveText: document.getElementById('loveText').value.trim(),
+      loveText: collect333(),
       loveScore: loveResult ? loveResult.score : 0,
       loveFeedback: loveResult ? loveResult.feedback : '',
       totalScore: Math.round(
@@ -1065,7 +1179,11 @@ async function saveDiary() {
       document.getElementById('analyzeSkinBtn').disabled = true;
       document.getElementById('analyzeSkinBtn').textContent = '✨ AI 膚質分析';
       document.getElementById('analyzeLoveBtn').textContent = '🌟 AI 溫暖回饋';
-      document.getElementById('loveText').value = '';
+      [1,2,3].forEach(i => {
+        document.getElementById('grateful'+i).value = '';
+        document.getElementById('good'+i).value = '';
+        document.getElementById('grow'+i).value = '';
+      });
       document.getElementById('photoInput').value = '';
       document.getElementById('resultSection').style.display = 'none';
     } else {
