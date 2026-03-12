@@ -221,6 +221,32 @@ body {
 .diary-input.grow-input { border-color: #90caf9; }
 .diary-input.grow-input:focus { border-color: #1565c0; }
 
+/* Diary mode toggle */
+.diary-mode-toggle {
+  display: flex;
+  background: rgba(233,30,99,0.08);
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 14px;
+}
+.mode-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ad1457;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.mode-btn.active {
+  background: #fff;
+  color: #c2185b;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
 /* Results */
 .result-section { display: none; }
 .score-row {
@@ -548,57 +574,70 @@ body {
     <button class="tab-btn" onclick="switchTab('history')">過去紀錄</button>
   </div>
 
-  <!-- Diary Tab (333日記) -->
+  <!-- Diary Tab -->
   <div id="diaryTab">
     <div class="card">
-      <div class="card-title"><span class="icon">&#x1f497;</span> 333 愛自己日記</div>
+      <div class="card-title"><span class="icon">&#x1f497;</span> 今日愛自己日記</div>
 
-      <div class="diary-section">
-        <div class="diary-section-title grateful">🙏 3 個今天感恩的事</div>
-        <div class="diary-input-row">
-          <span class="diary-num grateful">1</span>
-          <input class="diary-input" id="grateful1" placeholder="例如：家人的陪伴很溫暖">
+      <div class="diary-mode-toggle">
+        <button class="mode-btn active" onclick="switchDiaryMode('333')">📋 333 日記</button>
+        <button class="mode-btn" onclick="switchDiaryMode('free')">💭 心情隨寫</button>
+      </div>
+
+      <!-- 333 mode -->
+      <div id="diary333">
+        <div class="diary-section">
+          <div class="diary-section-title grateful">🙏 3 個今天感恩的事</div>
+          <div class="diary-input-row">
+            <span class="diary-num grateful">1</span>
+            <input class="diary-input" id="grateful1" placeholder="例如：家人的陪伴很溫暖">
+          </div>
+          <div class="diary-input-row">
+            <span class="diary-num grateful">2</span>
+            <input class="diary-input" id="grateful2" placeholder="例如：吃到好吃的早餐">
+          </div>
+          <div class="diary-input-row">
+            <span class="diary-num grateful">3</span>
+            <input class="diary-input" id="grateful3" placeholder="例如：天氣很好心情舒服">
+          </div>
         </div>
-        <div class="diary-input-row">
-          <span class="diary-num grateful">2</span>
-          <input class="diary-input" id="grateful2" placeholder="例如：吃到好吃的早餐">
+
+        <div class="diary-section">
+          <div class="diary-section-title good">💪 3 個今天做得不錯的事</div>
+          <div class="diary-input-row">
+            <span class="diary-num good">1</span>
+            <input class="diary-input good-input" id="good1" placeholder="例如：準時完成工作">
+          </div>
+          <div class="diary-input-row">
+            <span class="diary-num good">2</span>
+            <input class="diary-input good-input" id="good2" placeholder="例如：做了30分鐘運動">
+          </div>
+          <div class="diary-input-row">
+            <span class="diary-num good">3</span>
+            <input class="diary-input good-input" id="good3" placeholder="例如：對自己說了鼓勵的話">
+          </div>
         </div>
-        <div class="diary-input-row">
-          <span class="diary-num grateful">3</span>
-          <input class="diary-input" id="grateful3" placeholder="例如：天氣很好心情舒服">
+
+        <div class="diary-section">
+          <div class="diary-section-title grow">🌱 3 個生命可以更好的事</div>
+          <div class="diary-input-row">
+            <span class="diary-num grow">1</span>
+            <input class="diary-input grow-input" id="grow1" placeholder="例如：想要早一點睡覺">
+          </div>
+          <div class="diary-input-row">
+            <span class="diary-num grow">2</span>
+            <input class="diary-input grow-input" id="grow2" placeholder="例如：多喝水保持水潤">
+          </div>
+          <div class="diary-input-row">
+            <span class="diary-num grow">3</span>
+            <input class="diary-input grow-input" id="grow3" placeholder="例如：少看手機多看書">
+          </div>
         </div>
       </div>
 
-      <div class="diary-section">
-        <div class="diary-section-title good">💪 3 個今天做得不錯的事</div>
-        <div class="diary-input-row">
-          <span class="diary-num good">1</span>
-          <input class="diary-input good-input" id="good1" placeholder="例如：準時完成工作">
-        </div>
-        <div class="diary-input-row">
-          <span class="diary-num good">2</span>
-          <input class="diary-input good-input" id="good2" placeholder="例如：做了30分鐘運動">
-        </div>
-        <div class="diary-input-row">
-          <span class="diary-num good">3</span>
-          <input class="diary-input good-input" id="good3" placeholder="例如：對自己說了鼓勵的話">
-        </div>
-      </div>
-
-      <div class="diary-section">
-        <div class="diary-section-title grow">🌱 3 個生命可以更好的事</div>
-        <div class="diary-input-row">
-          <span class="diary-num grow">1</span>
-          <input class="diary-input grow-input" id="grow1" placeholder="例如：想要早一點睡覺">
-        </div>
-        <div class="diary-input-row">
-          <span class="diary-num grow">2</span>
-          <input class="diary-input grow-input" id="grow2" placeholder="例如：多喝水保持水潤">
-        </div>
-        <div class="diary-input-row">
-          <span class="diary-num grow">3</span>
-          <input class="diary-input grow-input" id="grow3" placeholder="例如：少看手機多看書">
-        </div>
+      <!-- Free mode -->
+      <div id="diaryFree" style="display:none;">
+        <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;寫下你的心情、感受、任何想說的話..."></textarea>
       </div>
 
       <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
@@ -1016,8 +1055,23 @@ async function analyzeSkin() {
   hideLoading();
 }
 
-// ── Collect 333 diary text ──
-function collect333() {
+// ── Diary mode ──
+let diaryMode = '333';
+
+function switchDiaryMode(mode) {
+  diaryMode = mode;
+  document.querySelectorAll('.diary-mode-toggle .mode-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (mode === '333' && i === 0) || (mode === 'free' && i === 1));
+  });
+  document.getElementById('diary333').style.display = mode === '333' ? '' : 'none';
+  document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
+}
+
+// ── Collect diary text ──
+function collectDiaryText() {
+  if (diaryMode === 'free') {
+    return document.getElementById('loveText').value.trim();
+  }
   const g = [1,2,3].map(i => document.getElementById('grateful'+i).value.trim()).filter(Boolean);
   const d = [1,2,3].map(i => document.getElementById('good'+i).value.trim()).filter(Boolean);
   const r = [1,2,3].map(i => document.getElementById('grow'+i).value.trim()).filter(Boolean);
@@ -1030,7 +1084,7 @@ function collect333() {
 
 // ── Analyze love ──
 async function analyzeLove() {
-  const text = collect333();
+  const text = collectDiaryText();
   if (!text) {
     showToast('請至少填寫一項日記內容');
     return;
@@ -1145,7 +1199,7 @@ async function saveDiary() {
       skinPhotoBase64: photoBase64 || '',  // full original for beauticians
       skinScore: skinResult ? skinResult.score : 0,
       skinAnalysis: skinResult ? formatSkinReport(skinResult) : '',
-      loveText: collect333(),
+      loveText: collectDiaryText(),
       loveScore: loveResult ? loveResult.score : 0,
       loveFeedback: loveResult ? loveResult.feedback : '',
       totalScore: Math.round(
@@ -1179,6 +1233,7 @@ async function saveDiary() {
       document.getElementById('analyzeSkinBtn').disabled = true;
       document.getElementById('analyzeSkinBtn').textContent = '✨ AI 膚質分析';
       document.getElementById('analyzeLoveBtn').textContent = '🌟 AI 溫暖回饋';
+      document.getElementById('loveText').value = '';
       [1,2,3].forEach(i => {
         document.getElementById('grateful'+i).value = '';
         document.getElementById('good'+i).value = '';
