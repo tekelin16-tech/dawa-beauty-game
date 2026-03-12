@@ -397,7 +397,7 @@ body {
 <div class="container">
   <div class="header">
     <h1>Dawa 美麗日記</h1>
-    <p>記錄每一天的美麗與自愛</p>
+    <p>記錄每一天的美麗與愛自己</p>
   </div>
 
   <div class="user-bar" id="userBar" style="display:none;">
@@ -437,7 +437,7 @@ body {
 
     <!-- Love Section -->
     <div class="card">
-      <div class="card-title"><span class="icon">&#x1f497;</span> 今日自愛紀錄</div>
+      <div class="card-title"><span class="icon">&#x1f497;</span> 今日愛自己紀錄</div>
       <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;例如：敷了面膜、做了運動、早睡了..."></textarea>
       <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
         &#x1f31f; AI 溫暖回饋
@@ -468,7 +468,7 @@ body {
             </svg>
             <span class="circle-text love-color" id="loveScoreText">--</span>
           </div>
-          <div class="score-label">自愛分數</div>
+          <div class="score-label">愛自己分數</div>
         </div>
       </div>
       <div class="total-score" id="totalScoreText"></div>
@@ -1002,7 +1002,7 @@ async function loadHistory() {
 
         // Love text
         if (entry.love_text) {
-          detailHtml += '<div class="history-block love-block"><span class="blabel">💕 今日自愛紀錄</span>' + escapeHtml(entry.love_text) + '</div>';
+          detailHtml += '<div class="history-block love-block"><span class="blabel">💕 今日愛自己紀錄</span>' + escapeHtml(entry.love_text) + '</div>';
         }
 
         // Love feedback from AI
