@@ -388,6 +388,37 @@ body {
   color: #c2185b;
   font-weight: 600;
 }
+.progress-wrap {
+  width: 260px;
+  margin-top: 20px;
+}
+.progress-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #e91e63, #9c27b0);
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+.progress-step {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #ad1457;
+  text-align: center;
+}
+.progress-pct {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #c2185b;
+  font-weight: 700;
+  text-align: center;
+}
 
 /* Tabs */
 .tabs {
@@ -436,6 +467,11 @@ body {
 <div class="spinner-overlay" id="loadingOverlay">
   <div class="spinner"></div>
   <div class="spinner-text" id="loadingText">AI 分析中...</div>
+  <div class="progress-wrap" id="progressWrap" style="display:none;">
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="progress-step" id="progressStep"></div>
+    <div class="progress-pct" id="progressPct">0%</div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -847,7 +883,7 @@ async function analyzeSkin() {
   if (!photoBase64) return;
   // Use cropped image for AI, fall back to full if no crop
   const imageForAI = croppedBase64 || photoBase64;
-  showLoading('AI 正在分析您的膚質...');
+  showLoading('AI 正在分析您的膚質...', skinSteps);
   try {
     const resp = await fetch(API_BASE + '/api/diary/analyze-skin', {
       method: 'POST',
@@ -880,7 +916,7 @@ async function analyzeLove() {
     showToast('請先寫下今天愛自己做的事');
     return;
   }
-  showLoading('AI 正在給予溫暖回饋...');
+  showLoading('AI 正在給予溫暖回饋...', loveSteps);
   try {
     const resp = await fetch(API_BASE + '/api/diary/analyze-love', {
       method: 'POST',
@@ -1122,12 +1158,64 @@ function escapeHtml(text) {
 }
 
 // ── UI helpers ──
-function showLoading(text) {
+let progressTimer = null;
+const skinSteps = [
+  [5,  '📷 讀取照片中...'],
+  [12, '🔍 辨識皮膚區域...'],
+  [20, '🧬 分析膚色均勻度...'],
+  [28, '🔬 檢測毛孔狀態...'],
+  [35, '💊 檢查痘痘粉刺...'],
+  [42, '🎨 評估色素沉澱...'],
+  [48, '📐 測量皺紋細紋...'],
+  [55, '💧 分析水潤度...'],
+  [62, '⚖️ 評估油脂平衡...'],
+  [68, '🛡️ 檢測敏感度...'],
+  [74, '☀️ 評估防曬狀況...'],
+  [80, '🧴 分析角質狀態...'],
+  [85, '✨ 檢測光澤度...'],
+  [90, '📊 綜合評分中...'],
+  [95, '📝 生成報告...']
+];
+const loveSteps = [
+  [15, '💕 閱讀你的紀錄...'],
+  [35, '🤗 理解你的感受...'],
+  [55, '💖 感受你的溫暖...'],
+  [75, '✍️ 撰寫回饋...'],
+  [90, '🌟 完成中...']
+];
+
+function showLoading(text, steps) {
   document.getElementById('loadingText').textContent = text || 'AI 分析中...';
   document.getElementById('loadingOverlay').classList.add('show');
+  const wrap = document.getElementById('progressWrap');
+  if (steps) {
+    wrap.style.display = 'block';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressPct').textContent = '0%';
+    document.getElementById('progressStep').textContent = '';
+    let idx = 0;
+    progressTimer = setInterval(() => {
+      if (idx < steps.length) {
+        const [pct, label] = steps[idx];
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('progressPct').textContent = pct + '%';
+        document.getElementById('progressStep').textContent = label;
+        idx++;
+      }
+    }, 1200);
+  } else {
+    wrap.style.display = 'none';
+  }
 }
 function hideLoading() {
-  document.getElementById('loadingOverlay').classList.remove('show');
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+  // Flash to 100%
+  document.getElementById('progressFill').style.width = '100%';
+  document.getElementById('progressPct').textContent = '100%';
+  document.getElementById('progressStep').textContent = '✅ 完成！';
+  setTimeout(() => {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }, 400);
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
