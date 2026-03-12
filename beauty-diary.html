@@ -489,13 +489,24 @@ body {
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('write')">寫日記</button>
+    <button class="tab-btn active" onclick="switchTab('diary')">寫日記</button>
+    <button class="tab-btn" onclick="switchTab('skin')">膚質分析</button>
     <button class="tab-btn" onclick="switchTab('history')">過去紀錄</button>
   </div>
 
-  <!-- Write Tab -->
-  <div id="writeTab">
-    <!-- Photo Section -->
+  <!-- Diary Tab (愛自己) -->
+  <div id="diaryTab">
+    <div class="card">
+      <div class="card-title"><span class="icon">&#x1f497;</span> 今日愛自己紀錄</div>
+      <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;例如：敷了面膜、做了運動、早睡了..."></textarea>
+      <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
+        &#x1f31f; AI 溫暖回饋
+      </button>
+    </div>
+  </div>
+
+  <!-- Skin Tab (膚質分析) -->
+  <div id="skinTab" style="display:none;">
     <div class="card">
       <div class="card-title"><span class="icon">&#x1f4f7;</span> 皮膚紀錄</div>
       <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
@@ -517,62 +528,54 @@ body {
       </button>
     </div>
 
-    <!-- Love Section -->
-    <div class="card">
-      <div class="card-title"><span class="icon">&#x1f497;</span> 今日愛自己紀錄</div>
-      <textarea class="love-textarea" id="loveText" placeholder="今天做了什麼愛自己的事？&#10;例如：敷了面膜、做了運動、早睡了..."></textarea>
-      <button class="btn btn-primary" id="analyzeLoveBtn" onclick="analyzeLove()">
-        &#x1f31f; AI 溫暖回饋
-      </button>
-    </div>
+  </div><!-- /skinTab -->
 
-    <!-- Results -->
-    <div class="card result-section" id="resultSection">
-      <div class="card-title"><span class="icon">&#x1f4ca;</span> 今日美麗分數</div>
-      <div class="score-row">
-        <div class="score-circle">
-          <div class="circle-wrap">
-            <svg width="100" height="100" viewBox="0 0 100 100">
-              <circle class="circle-bg" cx="50" cy="50" r="42"/>
-              <circle class="circle-progress skin" id="skinCircle" cx="50" cy="50" r="42"
-                stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
-            </svg>
-            <span class="circle-text skin-color" id="skinScoreText">--</span>
-          </div>
-          <div class="score-label">膚質分數</div>
+  <!-- Results (shared, shown when any analysis is done) -->
+  <div class="card result-section" id="resultSection">
+    <div class="card-title"><span class="icon">&#x1f4ca;</span> 今日美麗分數</div>
+    <div class="score-row">
+      <div class="score-circle">
+        <div class="circle-wrap">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle class="circle-bg" cx="50" cy="50" r="42"/>
+            <circle class="circle-progress skin" id="skinCircle" cx="50" cy="50" r="42"
+              stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+          </svg>
+          <span class="circle-text skin-color" id="skinScoreText">--</span>
         </div>
-        <div class="score-circle">
-          <div class="circle-wrap">
-            <svg width="100" height="100" viewBox="0 0 100 100">
-              <circle class="circle-bg" cx="50" cy="50" r="42"/>
-              <circle class="circle-progress love" id="loveCircle" cx="50" cy="50" r="42"
-                stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
-            </svg>
-            <span class="circle-text love-color" id="loveScoreText">--</span>
-          </div>
-          <div class="score-label">愛自己分數</div>
-        </div>
+        <div class="score-label">膚質分數</div>
       </div>
-      <div class="total-score" id="totalScoreText"></div>
-      <div id="analysisBox" style="display:none;">
-        <div class="skin-report">
-          <div class="report-title">&#x1f4cb; 15 項膚質檢測報告</div>
-          <ul class="check-list" id="checkList"></ul>
+      <div class="score-circle">
+        <div class="circle-wrap">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle class="circle-bg" cx="50" cy="50" r="42"/>
+            <circle class="circle-progress love" id="loveCircle" cx="50" cy="50" r="42"
+              stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
+          </svg>
+          <span class="circle-text love-color" id="loveScoreText">--</span>
         </div>
-        <div class="report-summary" id="reportSummary"></div>
-        <div class="analysis-text" id="reportTips" style="display:none;">
-          <span class="label">&#x1f4a1; 保養建議</span>
-          <span id="tipsContent"></span>
-        </div>
+        <div class="score-label">愛自己分數</div>
       </div>
-      <div class="feedback-text" id="feedbackBox" style="display:none;">
-        <span class="label">&#x1f49d; 溫暖回饋</span>
-        <span id="feedbackContent"></span>
-      </div>
-      <button class="btn btn-primary" id="saveBtn" onclick="saveDiary()" style="display:none;">
-        &#x1f4be; 儲存今日日記
-      </button>
     </div>
+    <div class="total-score" id="totalScoreText"></div>
+    <div id="analysisBox" style="display:none;">
+      <div class="skin-report">
+        <div class="report-title">&#x1f4cb; 15 項膚質檢測報告</div>
+        <ul class="check-list" id="checkList"></ul>
+      </div>
+      <div class="report-summary" id="reportSummary"></div>
+      <div class="analysis-text" id="reportTips" style="display:none;">
+        <span class="label">&#x1f4a1; 保養建議</span>
+        <span id="tipsContent"></span>
+      </div>
+    </div>
+    <div class="feedback-text" id="feedbackBox" style="display:none;">
+      <span class="label">&#x1f49d; 溫暖回饋</span>
+      <span id="feedbackContent"></span>
+    </div>
+    <button class="btn btn-primary" id="saveBtn" onclick="saveDiary()" style="display:none;">
+      &#x1f4be; 儲存今日日記
+    </button>
   </div>
 
   <!-- History Tab -->
@@ -639,9 +642,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Tab switching ──
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', (tab === 'write' && i === 0) || (tab === 'history' && i === 1));
+    btn.classList.toggle('active',
+      (tab === 'diary' && i === 0) || (tab === 'skin' && i === 1) || (tab === 'history' && i === 2));
   });
-  document.getElementById('writeTab').style.display = tab === 'write' ? '' : 'none';
+  document.getElementById('diaryTab').style.display = tab === 'diary' ? '' : 'none';
+  document.getElementById('skinTab').style.display = tab === 'skin' ? '' : 'none';
   document.getElementById('historyTab').style.display = tab === 'history' ? '' : 'none';
   if (tab === 'history') loadHistory();
 }
