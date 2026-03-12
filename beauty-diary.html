@@ -633,6 +633,23 @@ body {
 .music-btn.playing {
   animation: musicPulse 1.5s ease infinite;
 }
+.music-list-btn {
+  position: fixed;
+  top: 12px;
+  right: 58px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 2px 8px rgba(233,30,99,0.2);
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 501;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 @keyframes musicPulse {
   0%,100% { transform: scale(1); }
   50% { transform: scale(1.1); }
@@ -687,6 +704,7 @@ body {
 
 <div class="toast" id="toast"></div>
 <button class="music-btn" id="musicBtn" onclick="toggleMusic()" title="背景音樂">🔇</button>
+<button class="music-list-btn" id="musicListBtn" onclick="toggleMusicPanel()" title="選擇音樂">🎶</button>
 <div class="music-panel" id="musicPanel">
   <div class="panel-title">🎶 選擇音樂</div>
   <div class="music-track" onclick="pickTrack(0)"><span class="track-icon">🌅</span> 夕陽暖光</div>
@@ -1291,11 +1309,6 @@ function startMusic() {
 startMusic();
 
 function toggleMusic() {
-  const panel = document.getElementById('musicPanel');
-  if (panel.classList.contains('show')) {
-    panel.classList.remove('show');
-    return;
-  }
   if (musicPlaying) {
     bgMusic.pause();
     musicBtn.textContent = '🔇';
@@ -1309,28 +1322,17 @@ function toggleMusic() {
   }
 }
 
-// Long press or double tap to open track picker
-let musicLongTimer = null;
-musicBtn.addEventListener('touchstart', () => {
-  musicLongTimer = setTimeout(() => {
-    document.getElementById('musicPanel').classList.toggle('show');
-    updateTrackList();
-    musicLongTimer = null;
-  }, 500);
-}, { passive: true });
-musicBtn.addEventListener('touchend', () => {
-  if (musicLongTimer) clearTimeout(musicLongTimer);
-});
-musicBtn.addEventListener('dblclick', (e) => {
-  e.preventDefault();
-  document.getElementById('musicPanel').classList.toggle('show');
+function toggleMusicPanel() {
+  const panel = document.getElementById('musicPanel');
+  panel.classList.toggle('show');
   updateTrackList();
-});
+}
 
 // Close panel when tapping elsewhere
 document.addEventListener('click', (e) => {
   const panel = document.getElementById('musicPanel');
-  if (panel.classList.contains('show') && !panel.contains(e.target) && e.target !== musicBtn) {
+  const listBtn = document.getElementById('musicListBtn');
+  if (panel.classList.contains('show') && !panel.contains(e.target) && e.target !== listBtn) {
     panel.classList.remove('show');
   }
 });
