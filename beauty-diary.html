@@ -653,9 +653,7 @@ body {
 
 <div class="toast" id="toast"></div>
 <button class="music-btn" id="musicBtn" onclick="toggleMusic()" title="背景音樂">🔇</button>
-<audio id="bgMusic" loop preload="none">
-  <source src="https://game.dawa.homes/music/piano-reflections.mp3" type="audio/mpeg">
-</audio>
+<audio id="bgMusic" preload="none"></audio>
 
 <div class="container">
   <div class="header">
@@ -1210,12 +1208,27 @@ function switchDiaryMode(mode) {
   document.getElementById('diaryFree').style.display = mode === 'free' ? '' : 'none';
 }
 
-// ── Background music (auto-play) ──
+// ── Background music (auto-play, shuffle playlist) ──
 const bgMusic = document.getElementById('bgMusic');
 const musicBtn = document.getElementById('musicBtn');
 let musicPlaying = false;
+const playlist = [
+  '/music/valley-sunset.mp3',
+  '/music/serene-view.mp3',
+  '/music/spirit-in-the-woods.mp3',
+  '/music/sleepy-cat.mp3'
+];
+let plIdx = Math.floor(Math.random() * playlist.length);
 
 bgMusic.volume = 0.3;
+bgMusic.src = playlist[plIdx];
+
+// When a track ends, play next one
+bgMusic.addEventListener('ended', () => {
+  plIdx = (plIdx + 1) % playlist.length;
+  bgMusic.src = playlist[plIdx];
+  bgMusic.play();
+});
 
 function startMusic() {
   bgMusic.play().then(() => {
@@ -1223,15 +1236,12 @@ function startMusic() {
     musicBtn.textContent = '🎵';
     musicBtn.classList.add('playing');
   }).catch(() => {
-    // Autoplay blocked — start on first user interaction
     const startOnTouch = () => {
       bgMusic.play().then(() => {
         musicPlaying = true;
         musicBtn.textContent = '🎵';
         musicBtn.classList.add('playing');
       });
-      document.removeEventListener('touchstart', startOnTouch);
-      document.removeEventListener('click', startOnTouch);
     };
     document.addEventListener('touchstart', startOnTouch, { once: true });
     document.addEventListener('click', startOnTouch, { once: true });
